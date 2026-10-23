@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Theme: White, Black, and Orange -->
+    <color name="stark_cyan">#FF6D00</color> <!-- Main Vibrant Orange Accent -->
+    <color name="stark_cyan_dark">#E65100</color> <!-- Deep Orange -->
+    <color name="stark_glow">#40FF6D00</color> <!-- Orange Glow Aura -->
+    <color name="stark_bg_dark">#000000</color> <!-- Deep OLED Black -->
+    <color name="stark_card_bg">#F2121212</color> <!-- Dark Surface HUD -->
+    <color name="stark_card_border">#66FF6D00</color> <!-- Orange Border -->
+    <color name="stark_gold">#FFA000</color> <!-- Warm Accent -->
+    <color name="stark_text_white">#FFFFFF</color> <!-- Crisp Pure White -->
+    <color name="stark_text_dim">#BDBDBD</color> <!-- Secondary White/Silver -->
+    <color name="stark_red">#FF3D00</color> <!-- Warning/Stop Red-Orange -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/stark_bg_dark">
+
+    <LinearLayout
+        android:id="@+id/llHomeContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Header: F.R.I.D.A.Y. ODDSOCEAN & Settings Icon -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="0.16"
+                    android:text="F.R.I.D.A.Y."
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="26sp" />
+
+                <TextView
+                    android:id="@+id/tvSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:letterSpacing="0.12"
+                    android:text="ODDSOCEAN"
+                    android:textColor="@color/stark_text_white"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnOpenSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Settings"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_settings_gear" />
+        </RelativeLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingBottom="24dp">
+
+                <!-- Living Particle Orb (Hero Element) -->
+                <FrameLayout
+                    android:id="@+id/flOrbContainer"
+                    android:layout_width="220dp"
+                    android:layout_height="220dp"
+                    android:layout_marginTop="8dp">
+
+                    <com.personal.friday.ParticleOrbView
+                        android:id="@+id/particleOrbView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </FrameLayout>
+
+                <!-- Core Status Glow Text -->
+                <TextView
+                    android:id="@+id/tvCoreStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:letterSpacing="0.14"
+                    android:text="ALL SYSTEMS NOMINAL • CORE AT 100%"
+                    android:textColor="@color/stark_gold"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvOrbHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:letterSpacing="0.06"
+                    android:text="Tap Orb to Test Neural Link"
+                    android:textColor="@color/stark_text_dim"
+                    android:textSize="11sp" />
+
+                <!-- Telemetry HUD Card 1: Core Power & Thermals -->
+                <LinearLayout
+                    android:id="@+id/cardTelemetryPower"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/bg_hud_card"
+                    android:orientation="vertical">
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:letterSpacing="0.1"
+                            android:text="⚡ CORE POWER &amp; THERMALS"
+                            android:textColor="@color/stark_cyan"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvBatteryPercent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:fontFamily="sans-serif-black"
+                            android:text="--%"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="13sp" />
+                    </RelativeLayout>
+
+                    <TextView
+                        android:id="@+id/tvThermalStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Thermals: Reading sensor..."
+                        android:textColor="@color/stark_text_dim"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Telemetry HUD Card 2: Neural Memory (RAM) -->
+                <LinearLayout
+                    android:id="@+id/cardTelemetryMemory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_hud_card"
+                    android:orientation="vertical">
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:letterSpacing="0.1"
+                            android:text="🧠 NEURAL MEMORY (RAM)"
+                            android:textColor="@color/stark_cyan"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvRamUsage"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:fontFamily="sans-serif-black"
+                            android:text="-- / --"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="13sp" />
+                    </RelativeLayout>
+
+                    <TextView
+                        android:id="@+id/tvRamState"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Memory Pressure: Optimal • Neural Matrix Ready"
+                        android:textColor="@color/stark_text_dim"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Telemetry HUD Card 3: Active Protocols & Defenses -->
+                <LinearLayout
+                    android:id="@+id/cardTelemetryProtocols"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_hud_card"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.1"
+                        android:text="🛡️ ACTIVE DEFENSES &amp; PROTOCOLS"
+                        android:textColor="@color/stark_cyan"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvActiveProtocolsSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="• Screen Sentry: Active\n• Doomscroll Protocol: Armed\n• Voice Wake: Offline KWS Active"
+                        android:textColor="@color/stark_text_dim"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Big Initialize Overlay Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnToggleService"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="22dp"
+                    app:backgroundTint="#FF6D00"
+                    app:cornerRadius="14dp"
+                    android:letterSpacing="0.08"
+                    android:text="@string/start_service"
+                    android:textColor="#000000"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- Fullscreen Nanotech Swarm Layer (App Launch Intro) -->
+    <com.personal.friday.NanotechParticleView
+        android:id="@+id/particleView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</FrameLayout>

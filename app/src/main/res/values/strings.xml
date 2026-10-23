@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Friday</string>
+    <string name="friday_title">F.R.I.D.A.Y.</string>
+    <string name="friday_subtitle">Tactical AI Companion • Iron Man Edition</string>
+    <string name="api_key_hint">Enter Gemini API Key</string>
+    <string name="save_api_key">Save Key</string>
+    <string name="start_service">INITIALIZE F.R.I.D.A.Y.</string>
+    <string name="stop_service">DISENGAGE F.R.I.D.A.Y.</string>
+    <string name="permission_overlay_title">Screen Overlay Permission</string>
+    <string name="permission_mic_title">Microphone Access</string>
+    <string name="listening">Listening to Boss…</string>
+    <string name="analyzing">Scanning display, Boss…</string>
+    <string name="accessibility_service_description">Enables F.R.I.D.A.Y. to dictate and auto-type text directly into chats, notes, and input fields upon your voice command.</string>
+    <string name="widget_description">Live Weather &amp; Tactical System HUD for F.R.I.D.A.Y.</string>
+</resources>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubbleRoot"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="3dp">
+
+    <!-- Glowing Background Aura -->
+    <View
+        android:id="@+id/bubbleGlow"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:layout_gravity="center"
+        android:background="@drawable/ic_friday_bubble" />
+
+    <!-- Arc Reactor Icon (Compact Sleek Design) -->
+    <ImageView
+        android:id="@+id/bubbleIcon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:contentDescription="F.R.I.D.A.Y."
+        android:src="@drawable/ic_friday_bubble" />
+
+    <!-- Pulse Mic Indicator Badge -->
+    <ImageView
+        android:id="@+id/micBadge"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="bottom|end"
+        android:background="@drawable/bg_button_stark"
+        android:padding="2dp"
+        android:src="@drawable/ic_mic"
+        android:visibility="gone" />
+
+</FrameLayout>

@@ -1,0 +1,31 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <!-- Outer Orange Glow Ring -->
+    <path
+        android:fillColor="#33FF6D00"
+        android:pathData="M32,32m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0" />
+    <!-- Outer Deep Black Arc Frame with Orange Stroke -->
+    <path
+        android:fillColor="#F0000000"
+        android:strokeColor="#FFFF6D00"
+        android:strokeWidth="2.5"
+        android:pathData="M32,32m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
+    <!-- Tactical Reactor Segments -->
+    <path
+        android:strokeColor="#80FF6D00"
+        android:strokeWidth="1.5"
+        android:pathData="M32,10 L32,17 M32,47 L32,54 M10,32 L17,32 M47,32 L54,32" />
+    <!-- Inner Core Circle with Orange Glow -->
+    <path
+        android:fillColor="#33FF6D00"
+        android:strokeColor="#FFFF6D00"
+        android:strokeWidth="2"
+        android:pathData="M32,32m-13,0a13,13 0,1 1,26 0a13,13 0,1 1,-26 0" />
+    <!-- Center Bright White Core -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32,32m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+</vector>

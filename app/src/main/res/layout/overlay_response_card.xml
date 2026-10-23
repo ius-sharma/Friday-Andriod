@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cardRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    android:background="@drawable/bg_hud_card"
+    android:elevation="16dp"
+    android:orientation="vertical">
+
+    <!-- Top HUD Header Bar -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_friday_bubble" />
+
+            <TextView
+                android:id="@+id/tvHeaderTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.1"
+                android:text="F.R.I.D.A.Y."
+                android:textColor="@color/stark_cyan"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Inject Text into Active Field -->
+            <ImageButton
+                android:id="@+id/btnTypeInApp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_icon_button_ripple"
+                android:contentDescription="Type into Active App"
+                android:padding="6dp"
+                android:src="@android:drawable/ic_menu_edit"
+                android:tint="@color/stark_cyan" />
+
+            <!-- Read Out / Replay Voice -->
+            <ImageButton
+                android:id="@+id/btnTtsReplay"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_icon_button_ripple"
+                android:contentDescription="Replay Voice"
+                android:padding="6dp"
+                android:src="@drawable/ic_volume" />
+
+            <!-- Close Card -->
+            <ImageButton
+                android:id="@+id/btnCloseCard"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_icon_button_ripple"
+                android:contentDescription="Close HUD"
+                android:padding="6dp"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Divider Line -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#40FF6D00" />
+
+    <!-- Sentry ON / OFF Bar (Positioned Below Line) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/btnToggleOverwatch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="32dp"
+            android:background="@drawable/bg_overwatch_pill"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="5dp">
+
+            <View
+                android:id="@+id/dotOverwatchStatus"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:background="@drawable/bg_dot_active" />
+
+            <TextView
+                android:id="@+id/tvOverwatchBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="7dp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center_vertical"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.08"
+                android:text="SENTRY: ON"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layoutReelBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:minHeight="32dp"
+            android:background="@drawable/bg_overwatch_pill"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="5dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvReelCounterBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center_vertical"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.08"
+                android:text="🎬 REELS: 0/10"
+                android:textColor="#FF6D00"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvOverwatchHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="Auto screen sentry • Tap to toggle"
+            android:textColor="@color/stark_text_dim"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Status / User Query Banner -->
+    <TextView
+        android:id="@+id/tvUserQuery"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Boss: Ready to scan"
+        android:textColor="@color/stark_gold"
+        android:textSize="13sp"
+        android:textStyle="italic" />
+
+    <!-- Progress / Scanning Bar -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="6dp"
+        android:indeterminate="true"
+        android:indeterminateTint="@color/stark_cyan"
+        android:visibility="gone" />
+
+    <!-- Friday's Tactical Response Text -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:maxHeight="260dp">
+
+        <TextView
+            android:id="@+id/tvResponseContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="4dp"
+            android:text="Ready for orders, Boss. Tap the mic or type below to analyze your screen."
+            android:textColor="@color/stark_text_white"
+            android:textSize="14sp" />
+    </ScrollView>
+
+    <!-- Bottom Input & Action Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Mic Button -->
+        <ImageButton
+            android:id="@+id/btnQuickMic"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_button_stark"
+            android:contentDescription="Speak to Friday"
+            android:padding="9dp"
+            android:src="@drawable/ic_mic" />
+
+        <!-- Text Input -->
+        <EditText
+            android:id="@+id/etQuickQuestion"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_marginHorizontal="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input_field"
+            android:hint="Ask Friday about this screen..."
+            android:imeOptions="actionSend"
+            android:inputType="text"
+            android:paddingHorizontal="12dp"
+            android:textColor="@color/stark_text_white"
+            android:textColorHint="@color/stark_text_dim"
+            android:textSize="13sp" />
+
+        <!-- Send Button -->
+        <ImageButton
+            android:id="@+id/btnQuickSend"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_button_stark"
+            android:contentDescription="Send"
+            android:padding="10dp"
+            android:src="@drawable/ic_send" />
+    </LinearLayout>
+
+</LinearLayout>
