@@ -1,0 +1,41 @@
+# Built-in Gradle files
+.gradle/
+build/
+app/build/
+
+# Local configuration file (contains local Android SDK path, personal paths & machine secrets)
+local.properties
+
+# Log files
+*.log
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+
+# Visual Studio Code
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Android Keystore and credentials
+*.jks
+*.keystore
+google-services.json
+
+# Temporary archives and extracted toolchain dumps at root
+*.tar.bz2
+*.tar.gz
+classes.jar
+kws-model/
+kws-nonmobile/
+
+# Android Profiler & Captures
+captures/
