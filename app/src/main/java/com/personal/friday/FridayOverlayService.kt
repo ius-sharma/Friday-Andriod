@@ -74,7 +74,7 @@ class FridayOverlayService : Service() {
     private var screenCaptureManager: ScreenCaptureManager? = null
     private lateinit var geminiClient: GeminiApiClient
     private lateinit var speechManager: SpeechManager
-    private lateinit var ttsManager: TtsManager
+    internal lateinit var ttsManager: TtsManager
     private lateinit var hotwordSpotter: HotwordSpotter
     private var isWakeWordEnabled = true
 
@@ -189,6 +189,16 @@ class FridayOverlayService : Service() {
                             ?.scaleY(1.0f)
                             ?.setDuration(400)
                             ?.start()
+
+                        // When Friday finishes speaking in Call Proxy Mode, start listening for caller's answer!
+                        if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive &&
+                            com.personal.friday.telephony.FridayTelephonyManager.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_OFFHOOK) {
+                            mainHandler.postDelayed({
+                                if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                                    speechManager.startListening()
+                                }
+                            }, 350)
+                        }
                     }
                 }
             }
@@ -196,7 +206,11 @@ class FridayOverlayService : Service() {
             speechManager = SpeechManager(
                 context = this,
                 onResult = { recognizedText ->
-                    processUserQuery(recognizedText)
+                    if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                        handleCallProxyCallerUtterance(recognizedText)
+                    } else {
+                        processUserQuery(recognizedText)
+                    }
                 },
                 onStatus = { status ->
                     updateCardStatus(status)
@@ -205,6 +219,25 @@ class FridayOverlayService : Service() {
                     }
                 },
                 onError = { errorMsg ->
+                    if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                        Log.d("FridayTelephony", "Proxy mic error/status: $errorMsg")
+                        updateCardStatus(errorMsg)
+                        setMicActive(false)
+                        if (!isCardVisible) {
+                            showWhisper(errorMsg)
+                        }
+                        // Only retry on normal caller pauses/silence ("samajh nahi aaya" or "Time out")
+                        if (errorMsg.contains("samajh nahi aaya", ignoreCase = true) || errorMsg.contains("Time out", ignoreCase = true)) {
+                            mainHandler.postDelayed({
+                                if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive &&
+                                    com.personal.friday.telephony.FridayTelephonyManager.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_OFFHOOK &&
+                                    !ttsManager.isSpeaking) {
+                                    speechManager.startListening()
+                                }
+                            }, 1000)
+                        }
+                        return@SpeechManager
+                    }
                     updateCardStatus(errorMsg)
                     setMicActive(false)
                     if (!isCardVisible) {
@@ -212,6 +245,13 @@ class FridayOverlayService : Service() {
                     }
                 }
             )
+
+            speechManager.onCallerBargeIn = {
+                if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive && ttsManager.isSpeaking) {
+                    Log.i("FridayTelephony", "Caller interruption / barge-in! Halting speech immediately.")
+                    ttsManager.stop()
+                }
+            }
 
             hotwordSpotter = HotwordSpotter(
                 context = this,
@@ -234,11 +274,16 @@ class FridayOverlayService : Service() {
                 startForeground(
                     NOTIFICATION_ID,
                     buildNotification(),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 )
             } else {
                 startForeground(NOTIFICATION_ID, buildNotification())
             }
+
+            getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("friday_enabled", true)
+                .apply()
 
             setupBubbleOverlay()
             setupCardOverlay()
@@ -253,6 +298,7 @@ class FridayOverlayService : Service() {
 
             startWakeWordListeningIfAllowed()
             startOverwatchLoop()
+            setupTelephonyMonitoring()
             try {
                 com.personal.friday.widget.FridayHudWidgetProvider.updateAllWidgets(this)
             } catch (_: Exception) {}
@@ -266,10 +312,15 @@ class FridayOverlayService : Service() {
         Log.i("FridayOverlayService", "onStartCommand received action: ${intent?.action}")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val fgsType = if (hasScreenCapture) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                } else {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                }
                 startForeground(
                     NOTIFICATION_ID,
                     buildNotification(),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    fgsType
                 )
             } else {
                 startForeground(NOTIFICATION_ID, buildNotification())
@@ -287,6 +338,13 @@ class FridayOverlayService : Service() {
                         }
                         if (resultCode != 0 && data != null) {
                             try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    startForeground(
+                                        NOTIFICATION_ID,
+                                        buildNotification(),
+                                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                                    )
+                                }
                                 val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                                 val mediaProjection: MediaProjection? = projectionManager.getMediaProjection(resultCode, data)
                                 if (mediaProjection != null) {
@@ -348,7 +406,7 @@ class FridayOverlayService : Service() {
     private fun buildNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("F.R.I.D.A.Y. Online")
-            .setContentText("Screen Sentry active • Watching your back, Boss.")
+            .setContentText("Screen Sentry active • Watching your back, Sir.")
             .setSmallIcon(R.drawable.ic_friday_bubble)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -480,6 +538,16 @@ class FridayOverlayService : Service() {
             hideWhisper()
         }
 
+        whisperView?.findViewById<View>(R.id.btnWhisperProxyCall)?.setOnClickListener {
+            hideWhisper()
+            startCallProxyMode()
+        }
+
+        whisperView?.findViewById<View>(R.id.btnWhisperAnswerCall)?.setOnClickListener {
+            hideWhisper()
+            com.personal.friday.telephony.FridayTelephonyManager.acceptCall(this)
+        }
+
         whisperView?.setOnClickListener {
             hideWhisper()
             showCard()
@@ -537,7 +605,7 @@ class FridayOverlayService : Service() {
                 hideCard()
                 performAutoType(textToInject)
             } else {
-                ttsManager.speak("Boss, pehle question box me likhiye ya koi query puchiye.")
+                ttsManager.speak("Sir, pehle question box me likhiye ya koi query puchiye.")
             }
         }
 
@@ -549,12 +617,12 @@ class FridayOverlayService : Service() {
 
         cardView?.findViewById<ImageButton>(R.id.btnQuickMic)?.setOnClickListener {
             if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                updateCardStatus("Boss, Mic permission missing. Grant in main screen.")
+                updateCardStatus("Sir, Mic permission missing. Grant in main screen.")
                 return@setOnClickListener
             }
             hotwordSpotter.pause()
             setMicActive(true)
-            updateCardStatus("Listening to Boss… (Boliye Boss)")
+            updateCardStatus("Listening to Sir… (Boliye Sir)")
             speechManager.startListening()
         }
 
@@ -587,7 +655,7 @@ class FridayOverlayService : Service() {
                 .putBoolean("overwatch_enabled", isOverwatchEnabled)
                 .apply()
             updateCardOverwatchUI()
-            val promptMsg = if (isOverwatchEnabled) "Sentry active, Boss." else "Sentry paused, Boss."
+            val promptMsg = if (isOverwatchEnabled) "Sentry active, Sir." else "Sentry paused, Sir."
             ttsManager.speak(promptMsg)
         }
 
@@ -718,7 +786,7 @@ class FridayOverlayService : Service() {
             } catch (_: Exception) {}
 
             showWhisper("⚠️ Accessibility OFF • Copied text to clipboard!")
-            ttsManager.speak("Boss, text clipboard me copy kar diya hai. Screen par direct type karne ke liye Settings se Friday Accessibility on kijiye.")
+            ttsManager.speak("Sir, text clipboard me copy kar diya hai. Screen par direct type karne ke liye Settings se Friday Accessibility on kijiye.")
             return
         }
 
@@ -732,7 +800,7 @@ class FridayOverlayService : Service() {
                 pulseBubbleGlow()
                 val preview = if (text.length > 25) text.take(25) + "..." else text
                 showWhisper("✍️ Typed: \"$preview\"")
-                ttsManager.speak("Likh diya Boss.")
+                ttsManager.speak("Likh diya Sir.")
                 try {
                     val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -745,7 +813,7 @@ class FridayOverlayService : Service() {
             } else {
                 accessibilityService.copyToClipboard(text)
                 showWhisper("⚠️ No typing field active • Copied to clipboard!")
-                ttsManager.speak("Boss, kisi message ya text box par click kijiye. Text clipboard par copy kar diya hai.")
+                ttsManager.speak("Sir, kisi message ya text box par click kijiye. Text clipboard par copy kar diya hai.")
             }
         }, 220)
     }
@@ -808,11 +876,11 @@ class FridayOverlayService : Service() {
                         val tvUserQuery = cardView?.findViewById<TextView>(R.id.tvUserQuery)
                         val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
                         val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
-                        tvUserQuery?.text = "Boss: \"$query\""
-                        tvResponse?.text = "Scanning display now, Boss..."
+                        tvUserQuery?.text = "Sir: \"$query\""
+                        tvResponse?.text = "Scanning display now, Sir..."
                         progressBar?.visibility = View.VISIBLE
                     } else {
-                        showWhisper("Scanning display, Boss...")
+                        showWhisper("Scanning display, Sir...")
                     }
                 }
 
@@ -845,7 +913,7 @@ class FridayOverlayService : Service() {
                         }
                         ttsManager.speak(response)
                     }.onFailure { error ->
-                        val errorMsg = "Boss, error occurred: ${error.message}"
+                        val errorMsg = "Sir, error occurred: ${error.message}"
                         if (wasCardOpen) {
                             val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
                             val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
@@ -854,7 +922,7 @@ class FridayOverlayService : Service() {
                         } else {
                             showWhisper(errorMsg)
                         }
-                        ttsManager.speak("Boss, screen analyze nahi ho payi. Ek baar dubara tap kijiye.")
+                        ttsManager.speak("Sir, screen analyze nahi ho payi. Ek baar dubara tap kijiye.")
                     }
                 }
 
@@ -867,9 +935,9 @@ class FridayOverlayService : Service() {
                         val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
                         val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
                         progressBar?.visibility = View.GONE
-                        tvResponse?.text = "Boss, processing failure: ${e.message}"
+                        tvResponse?.text = "Sir, processing failure: ${e.message}"
                     } else {
-                        showWhisper("Processing failure, Boss.")
+                        showWhisper("Processing failure, Sir.")
                     }
                 }
             }
@@ -881,10 +949,10 @@ class FridayOverlayService : Service() {
         pulseBubbleGlow()
         // Never open the typing card on wake word - keep screen and target app undisturbed!
         setMicActive(true)
-        showWhisper("⚡ Listening, Boss...")
+        showWhisper("⚡ Listening, Sir...")
 
-        ttsManager.speak("Yes Boss?")
-        // Wait 750ms so TTS finishes speaking "Yes Boss?" before SpeechRecognizer opens mic
+        ttsManager.speak("Yes Sir?")
+        // Wait 750ms so TTS finishes speaking "Yes Sir?" before SpeechRecognizer opens mic
         mainHandler.postDelayed({
             if (isRunning) {
                 speechManager.startListening()
@@ -1085,8 +1153,8 @@ class FridayOverlayService : Service() {
 
     private fun triggerDoomscrollAlert() {
         pulseBubbleGlow()
-        showWhisper("⚠️ Boss, 10 reels complete! Focus wapas laane ka time hai.", 6500L)
-        ttsManager.speak("Boss, 10 reels complete ho chuki hain. Dopamine levels peak par hain, aapke real goals ko aapke focus ki zaroorat hai... phone side me rakhiye.")
+        showWhisper("⚠️ Sir, 10 reels complete! Focus wapas laane ka time hai.", 6500L)
+        ttsManager.speak("Sir, 10 reels complete ho chuki hain. Dopamine levels peak par hain, aapke real goals ko aapke focus ki zaroorat hai... phone side me rakhiye.")
     }
 
     fun checkAndTriggerMorningGreeting(isManualTest: Boolean = false) {
@@ -1140,6 +1208,174 @@ class FridayOverlayService : Service() {
         if (context.isBlank()) return null
         val nameMatch = Regex("""(?:name|naam|boss|called)\s*[:=-]\s*([a-zA-Z]+)""", RegexOption.IGNORE_CASE).find(context)
         return nameMatch?.groupValues?.get(1)?.trim()?.replaceFirstChar { it.uppercase() }
+    }
+
+    // --- TELEPHONY & CALL PROXY SYSTEM ---
+    private val callTranscript = mutableListOf<String>()
+
+    private fun setupTelephonyMonitoring() {
+        val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
+        telephonyMgr.registerListener(this)
+        telephonyMgr.setCallStateListener { state, number, contactName ->
+            when (state) {
+                com.personal.friday.telephony.FridayTelephonyManager.STATE_RINGING -> {
+                    val displayName = if (contactName.isNotBlank() && contactName != "Incoming Caller") {
+                        contactName
+                    } else if (number.isNotBlank()) {
+                        number
+                    } else {
+                        "Incoming Caller"
+                    }
+                    Log.i("FridayOverlayService", "Incoming Call from: $displayName ($number)")
+                    pulseBubbleGlow()
+                    showWhisper("📞 Incoming Call: $displayName", 9000L, showCallActions = true)
+                    mainHandler.postDelayed({
+                        if (telephonyMgr.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_RINGING) {
+                            val freshName = if (telephonyMgr.currentCallerName.isNotBlank() && telephonyMgr.currentCallerName != "Incoming Caller") {
+                                telephonyMgr.currentCallerName
+                            } else displayName
+                            showWhisper("📞 Incoming Call: $freshName", 9000L, showCallActions = true)
+                            ttsManager.speak("Sir, $freshName ka call aa raha hai. Kya main aapke behalf par baat karu?")
+                        }
+                    }, 450)
+                }
+                com.personal.friday.telephony.FridayTelephonyManager.STATE_OFFHOOK -> {
+                    Log.i("FridayOverlayService", "Call connected (Offhook)")
+                    if (telephonyMgr.isProxyActive) {
+                        showWhisper("🟢 Call Connected • Friday Speaking on Behalf of Sir", 4000L)
+                        engageSpeakerphoneWithRetries()
+                    }
+                }
+                com.personal.friday.telephony.FridayTelephonyManager.STATE_IDLE -> {
+                    Log.i("FridayOverlayService", "Call disconnected (Idle)")
+                    if (telephonyMgr.isProxyActive) {
+                        handleCallProxyTerminated(contactName)
+                    }
+                }
+            }
+        }
+    }
+
+    fun startCallProxyMode() {
+        val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
+        telephonyMgr.setProxyActiveState(true)
+        callTranscript.clear()
+
+        // 1. Configure TTS to USAGE_MEDIA so vocal delivery blasts out of loudspeaker cleanly & loudly
+        ttsManager.setCallMode(true)
+
+        // 2. Accept call if ringing
+        telephonyMgr.acceptCall(this)
+
+        // 3. Bring in-call dialer to front so speaker controls are visible
+        telephonyMgr.bringInCallUiToFront(this)
+
+        // 4. Force speakerphone with multi-attempt Accessibility clicks and AudioManager
+        engageSpeakerphoneWithRetries()
+
+        pulseBubbleGlow()
+        showWhisper("🤖 Friday Proxy Active: Talking on Sir's Behalf...", 6000L)
+
+        // 5. Deliver Intro after call audio establishes
+        mainHandler.postDelayed({
+            if (telephonyMgr.isProxyActive && telephonyMgr.currentCallState != com.personal.friday.telephony.FridayTelephonyManager.STATE_IDLE) {
+                engageSpeakerphoneWithRetries()
+
+                val introText = "Hello! Main Ayush Sir ki AI Personal Assistant Friday hoon. Sir abhi available nahi hain. Kya aap mujhe bata sakte hain kya zaroori kaam hai?"
+                callTranscript.add("Friday: $introText")
+                showWhisper("🤖 Friday: \"$introText\"", 6000L)
+                ttsManager.speak(introText)
+            }
+        }, 1200)
+    }
+
+    private fun engageSpeakerphoneWithRetries() {
+        val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
+        telephonyMgr.setSpeakerphoneEnabled(this, true)
+        com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
+
+        mainHandler.postDelayed({
+            if (telephonyMgr.isProxyActive) {
+                telephonyMgr.setSpeakerphoneEnabled(this, true)
+                com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
+            }
+        }, 400)
+        mainHandler.postDelayed({
+            if (telephonyMgr.isProxyActive) {
+                telephonyMgr.setSpeakerphoneEnabled(this, true)
+                com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
+            }
+        }, 900)
+        mainHandler.postDelayed({
+            if (telephonyMgr.isProxyActive) {
+                telephonyMgr.setSpeakerphoneEnabled(this, true)
+                com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
+            }
+        }, 1800)
+    }
+
+    fun stopCallProxyMode() {
+        val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
+        telephonyMgr.setProxyActiveState(false)
+        telephonyMgr.setSpeakerphoneEnabled(this, false)
+        ttsManager.setCallMode(false)
+        speechManager.stopListening()
+        hideWhisper()
+    }
+
+    fun handleCallProxyCallerUtterance(callerText: String) {
+        val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
+        if (!telephonyMgr.isProxyActive) return
+
+        val clean = callerText.trim()
+        if (clean.isBlank()) return
+
+        callTranscript.add("Caller: $clean")
+        showWhisper("Caller: \"$clean\"", 4500L)
+
+        serviceScope.launch(Dispatchers.IO) {
+            val history = callTranscript.takeLast(6).joinToString("\n")
+            val result = geminiClient.generateCallProxyResponse(clean, history)
+            val reply = result.getOrElse {
+                "Theek hai, main Sir ko aapka message convey kar dungi. Thank you!"
+            }
+
+            withContext(Dispatchers.Main) {
+                if (telephonyMgr.isProxyActive &&
+                    telephonyMgr.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_OFFHOOK) {
+                    callTranscript.add("Friday: $reply")
+                    showWhisper("Friday: \"$reply\"", 5500L)
+                    ttsManager.setCallMode(true)
+                    ttsManager.speak(reply)
+                }
+            }
+        }
+    }
+
+    private fun handleCallProxyTerminated(contactName: String) {
+        val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
+        telephonyMgr.setProxyActiveState(false)
+        telephonyMgr.setSpeakerphoneEnabled(this, false)
+        ttsManager.setCallMode(false)
+        speechManager.stopListening()
+
+        pulseBubbleGlow()
+        val displayName = if (contactName.isNotBlank() && contactName != "Incoming Caller") contactName else "Caller"
+        val summaryText = if (callTranscript.size > 1) {
+            val lastCallerUtterance = callTranscript.filter { it.startsWith("Caller:") }.lastOrNull() ?: ""
+            if (lastCallerUtterance.isNotBlank()) {
+                "Sir, $displayName ka call disconnect ho gaya hai. Unhone kaha: ${lastCallerUtterance.removePrefix("Caller: ")}"
+            } else {
+                "Sir, $displayName ka call disconnect ho gaya hai. Maine unhe aapke behalf par attend kiya tha."
+            }
+        } else {
+            "Sir, $displayName ka call disconnect ho gaya hai."
+        }
+
+        showWhisper("📞 Call Briefing:\n$summaryText", 7000L)
+        mainHandler.postDelayed({
+            ttsManager.speak(summaryText)
+        }, 500)
     }
 
     private fun updateReelCounterUI(isInReelApp: Boolean = false) {
@@ -1270,7 +1506,7 @@ class FridayOverlayService : Service() {
         ttsManager.speak(remark)
     }
 
-    private fun pulseBubbleGlow() {
+    fun pulseBubbleGlow() {
         bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)?.triggerPulse()
         val glow = bubbleView?.findViewById<View>(R.id.bubbleGlow) ?: return
         glow.animate()
@@ -1302,9 +1538,12 @@ class FridayOverlayService : Service() {
             }.start()
     }
 
-    private fun showWhisper(remark: String, durationMs: Long = 6500L) {
+    fun showWhisper(remark: String, durationMs: Long = 6500L, showCallActions: Boolean = false) {
         val tvWhisper = whisperView?.findViewById<TextView>(R.id.tvWhisperContent)
         tvWhisper?.text = remark
+
+        val callActions = whisperView?.findViewById<View>(R.id.layoutWhisperCallActions)
+        callActions?.visibility = if (showCallActions) View.VISIBLE else View.GONE
 
         val density = resources.displayMetrics.density
         val whisperWidthApprox = (240 * density).toInt()
@@ -1341,6 +1580,7 @@ class FridayOverlayService : Service() {
         if (!isWhisperVisible) return
         isWhisperVisible = false
         mainHandler.removeCallbacks(whisperDismissRunnable)
+        whisperView?.findViewById<View>(R.id.layoutWhisperCallActions)?.visibility = View.GONE
         whisperView?.animate()
             ?.alpha(0f)
             ?.scaleX(0.85f)
@@ -1410,6 +1650,7 @@ class FridayOverlayService : Service() {
         } catch (_: Exception) {}
 
         hotwordSpotter.stop()
+        com.personal.friday.telephony.FridayTelephonyManager.unregisterListener()
         ttsManager.release()
         speechManager.release()
         screenCaptureManager?.release()

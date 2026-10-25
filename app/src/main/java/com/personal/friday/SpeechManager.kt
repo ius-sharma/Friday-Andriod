@@ -3,6 +3,7 @@ package com.personal.friday
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -26,6 +27,7 @@ class SpeechManager(
     private var retryCount = 0
 
     var onListeningStateChanged: ((Boolean) -> Unit)? = null
+    var onCallerBargeIn: (() -> Unit)? = null
 
     fun isListening(): Boolean = isUserWantingToListen
 
@@ -35,27 +37,40 @@ class SpeechManager(
         }
     }
 
-    private fun initRecognizer() {
+    private fun initRecognizer(forceStandard: Boolean = false) {
         try {
             speechRecognizer?.destroy()
             speechRecognizer = null
 
-            val defaultService = Settings.Secure.getString(
-                context.contentResolver,
-                "voice_recognition_service"
-            )
-            val component = if (!defaultService.isNullOrBlank()) {
-                ComponentName.unflattenFromString(defaultService)
-            } else null
-
-            speechRecognizer = if (component != null) {
+            // Prioritize on-device speech recognition on Android 12+ (API 31+) for fast, conflict-free listening
+            if (!forceStandard && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
                 try {
-                    SpeechRecognizer.createSpeechRecognizer(context, component)
+                    speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+                    Log.i("SpeechManager", "Using ON-DEVICE SpeechRecognizer for ultra-low latency & in-call stability")
                 } catch (e: Exception) {
+                    Log.w("SpeechManager", "createOnDeviceSpeechRecognizer failed, falling back to standard", e)
+                }
+            }
+
+            if (speechRecognizer == null) {
+                val defaultService = Settings.Secure.getString(
+                    context.contentResolver,
+                    "voice_recognition_service"
+                )
+                val component = if (!defaultService.isNullOrBlank()) {
+                    ComponentName.unflattenFromString(defaultService)
+                } else null
+
+                speechRecognizer = if (component != null) {
+                    try {
+                        SpeechRecognizer.createSpeechRecognizer(context, component)
+                    } catch (e: Exception) {
+                        SpeechRecognizer.createSpeechRecognizer(context)
+                    }
+                } else {
                     SpeechRecognizer.createSpeechRecognizer(context)
                 }
-            } else {
-                SpeechRecognizer.createSpeechRecognizer(context)
             }
 
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
@@ -63,13 +78,22 @@ class SpeechManager(
                     if (!isUserWantingToListen) return
                     Log.d("SpeechManager", "onReadyForSpeech: Mic is hot and listening")
                     retryCount = 0
-                    onStatus("Listening to Boss… (Boliye Boss)")
+                    if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                        onStatus("Listening to caller...")
+                    } else {
+                        onStatus("Listening to Sir… (Boliye Sir)")
+                    }
                 }
 
                 override fun onBeginningOfSpeech() {
                     if (!isUserWantingToListen) return
-                    Log.d("SpeechManager", "onBeginningOfSpeech: Boss started speaking")
-                    onStatus("Voice receiving, Boss...")
+                    Log.d("SpeechManager", "onBeginningOfSpeech: Speech detected")
+                    onCallerBargeIn?.invoke()
+                    if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                        onStatus("Caller speaking...")
+                    } else {
+                        onStatus("Voice receiving, Sir...")
+                    }
                 }
 
                 override fun onRmsChanged(rmsdB: Float) {}
@@ -79,26 +103,48 @@ class SpeechManager(
                 override fun onEndOfSpeech() {
                     if (!isUserWantingToListen) return
                     Log.d("SpeechManager", "onEndOfSpeech")
-                    onStatus("Processing voice command...")
+                    onStatus("Processing voice...")
                 }
 
                 override fun onError(error: Int) {
-                    Log.e("SpeechManager", "onError code: $error, isUserWantingToListen=$isUserWantingToListen")
+                    Log.e("SpeechManager", "onError code: $error, isUserWantingToListen=$isUserWantingToListen, isProxy=${com.personal.friday.telephony.FridayTelephonyManager.isProxyActive}")
                     // If user closed or cancelled the mic, ignore all errors and NEVER restart
                     if (!isUserWantingToListen) {
                         return
                     }
 
+                    // In Call Proxy Mode: silence/timeout (code 6 or 7) means caller hasn't answered yet or is thinking
+                    if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive &&
+                        (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT)) {
+                        Log.d("SpeechManager", "Caller silence/pause in proxy mode. Continuing listen loop...")
+                        mainHandler.postDelayed({
+                            if (isUserWantingToListen && com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                                doStartListening()
+                            }
+                        }, 400)
+                        return
+                    }
+
+                    // If recognition service or audio hardware is busy (error 8 or error 3):
+                    if (error == 8 || error == SpeechRecognizer.ERROR_AUDIO) {
+                        Log.w("SpeechManager", "Mic or Speech Engine busy (error $error)")
+                        isUserWantingToListen = false
+                        onListeningStateChanged?.invoke(false)
+                        onError("Sir, phone mic is currently busy.")
+                        return
+                    }
+
                     // If error is ERROR_CLIENT (code 5, binding race on first tap), auto-retry ONCE
-                    if (error == SpeechRecognizer.ERROR_CLIENT && retryCount < 1) {
+                    if (error == SpeechRecognizer.ERROR_CLIENT && retryCount < 2) {
                         retryCount++
-                        Log.d("SpeechManager", "Binding in progress, retrying startListening once in 300ms")
+                        Log.d("SpeechManager", "Binding in progress, retrying startListening once in 350ms (retry=$retryCount)")
                         onStatus("Connecting voice engine...")
                         mainHandler.postDelayed({
                             if (isUserWantingToListen) {
+                                initRecognizer()
                                 doStartListening()
                             }
-                        }, 300)
+                        }, 350)
                         return
                     }
 
@@ -106,13 +152,13 @@ class SpeechManager(
                     onListeningStateChanged?.invoke(false)
 
                     val msg = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH -> "Kuch samajh nahi aaya Boss. Ek baar dubara bolein."
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Time out ho gaya Boss."
-                        SpeechRecognizer.ERROR_AUDIO -> "Audio recording issue aya Boss."
-                        SpeechRecognizer.ERROR_CLIENT -> "Mic ready ho raha hai, dubara tap karein Boss."
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mic permission needed Boss."
-                        SpeechRecognizer.ERROR_NETWORK -> "Network issue audio me aya Boss."
-                        else -> "Mic code $error: Please retry Boss."
+                        SpeechRecognizer.ERROR_NO_MATCH -> "Kuch samajh nahi aaya Sir. Ek baar dubara bolein."
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Time out ho gaya Sir."
+                        SpeechRecognizer.ERROR_AUDIO -> "Audio recording issue aya Sir."
+                        SpeechRecognizer.ERROR_CLIENT -> "Mic ready ho raha hai, dubara tap karein Sir."
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mic permission needed Sir."
+                        SpeechRecognizer.ERROR_NETWORK -> "Network issue audio me aya Sir."
+                        else -> "Mic code $error: Please retry Sir."
                     }
                     onError(msg)
                 }
@@ -126,7 +172,7 @@ class SpeechManager(
                         Log.d("SpeechManager", "Recognized voice: ${matches[0]}")
                         onResult(matches[0])
                     } else {
-                        onError("Boss, audio clear nahi tha.")
+                        onError("Sir, audio clear nahi tha.")
                     }
                 }
 
@@ -134,7 +180,7 @@ class SpeechManager(
                     if (!isUserWantingToListen) return
                     val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) {
-                        onStatus("Boss: \"${matches[0]}...\"")
+                        onStatus("Sir: \"${matches[0]}...\"")
                     }
                 }
 
@@ -153,9 +199,11 @@ class SpeechManager(
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
             putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("hi-IN", "en-IN", "en-US", "hi"))
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2200L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1600L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
         }
     }
 
@@ -180,7 +228,6 @@ class SpeechManager(
     private fun doStartListening() {
         if (!isUserWantingToListen) return
         try {
-            speechRecognizer?.cancel()
             val intent = buildRecognizerIntent()
             speechRecognizer?.startListening(intent)
             onStatus("Initializing mic...")

@@ -1,6 +1,7 @@
 package com.personal.friday
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
@@ -16,6 +17,10 @@ class TtsManager(context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     var onSpeakingListener: ((Boolean) -> Unit)? = null
+    var onReadyListener: (() -> Unit)? = null
+
+    val isSpeaking: Boolean
+        get() = tts?.isSpeaking == true
 
     init {
         // Explicitly initialize with Google Speech Services (Google TTS) for natural human voice
@@ -24,6 +29,7 @@ class TtsManager(context: Context) {
                 configureBestVoice()
                 setupUtteranceListener()
                 isInitialized = true
+                onReadyListener?.invoke()
             } else {
                 Log.w("TtsManager", "Google TTS engine failed to initialize, retrying default engine...")
                 fallbackInit()
@@ -37,6 +43,7 @@ class TtsManager(context: Context) {
                 configureBestVoice()
                 setupUtteranceListener()
                 isInitialized = true
+                onReadyListener?.invoke()
             }
         }
     }
@@ -124,20 +131,45 @@ class TtsManager(context: Context) {
         }
     }
 
-    fun speak(text: String) {
+    fun setCallMode(inCall: Boolean) {
+        val engine = tts ?: return
+        try {
+            // In in-call proxy mode, we use USAGE_MEDIA so Friday's vocal response blasts loudly & cleanly
+            // over the device loudspeaker without being suppressed by the telephony voice stream policy!
+            val usage = if (inCall) {
+                AudioAttributes.USAGE_MEDIA
+            } else {
+                AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+            }
+            val attributes = AudioAttributes.Builder()
+                .setUsage(usage)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            engine.setAudioAttributes(attributes)
+            Log.i("TtsManager", "TTS AudioAttributes set: inCall=$inCall, usage=$usage")
+        } catch (e: Exception) {
+            Log.w("TtsManager", "Error setting audio attributes", e)
+        }
+    }
+
+    fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
         if (!isInitialized || tts == null) return
 
         // Clean out markdown, URLs, and code blocks for smooth conversational vocal delivery
         val cleanText = cleanForSpeech(text)
         if (cleanText.isBlank()) return
 
-        tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, "FridayVoiceID")
+        tts?.speak(cleanText, queueMode, null, "FridayVoiceID")
     }
 
     private fun cleanForSpeech(raw: String): String {
         return raw
             // Remove code blocks
-            .replace(Regex("```[\\s\\S]*?```"), "Code check karein Boss.")
+            .replace(Regex("```[\\s\\S]*?```"), "Code check karein Sir.")
+            // Phonetic pronunciation normalization: ensure F.R.I.D.A.Y. is always spoken as the whole word "Friday", never spelled letter-by-letter
+            .replace(Regex("""[Ff]\.[Rr]\.[Ii]\.[Dd]\.[Aa]\.[Yy]\.?"""), "Friday")
+            .replace(Regex("""\bF\.R\.I\.D\.A\.Y\b""", RegexOption.IGNORE_CASE), "Friday")
+            .replace(Regex("""\bFRIDAY\b"""), "Friday")
             // Remove inline code ticks
             .replace(Regex("`([^`]+)`"), "$1")
             // Remove markdown links [text](url) -> text
