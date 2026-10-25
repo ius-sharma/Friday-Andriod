@@ -1,7 +1,10 @@
 package com.personal.friday
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
 import java.util.Locale
@@ -10,12 +13,16 @@ class TtsManager(context: Context) {
     private var tts: TextToSpeech? = null
     private var isInitialized = false
     private val appContext = context.applicationContext
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    var onSpeakingListener: ((Boolean) -> Unit)? = null
 
     init {
         // Explicitly initialize with Google Speech Services (Google TTS) for natural human voice
         tts = TextToSpeech(appContext, { status ->
             if (status == TextToSpeech.SUCCESS) {
                 configureBestVoice()
+                setupUtteranceListener()
                 isInitialized = true
             } else {
                 Log.w("TtsManager", "Google TTS engine failed to initialize, retrying default engine...")
@@ -28,8 +35,34 @@ class TtsManager(context: Context) {
         tts = TextToSpeech(appContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 configureBestVoice()
+                setupUtteranceListener()
                 isInitialized = true
             }
+        }
+    }
+
+    private fun setupUtteranceListener() {
+        try {
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {
+                    mainHandler.post { onSpeakingListener?.invoke(true) }
+                }
+
+                override fun onDone(utteranceId: String?) {
+                    mainHandler.post { onSpeakingListener?.invoke(false) }
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) {
+                    mainHandler.post { onSpeakingListener?.invoke(false) }
+                }
+
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    mainHandler.post { onSpeakingListener?.invoke(false) }
+                }
+            })
+        } catch (e: Exception) {
+            Log.e("TtsManager", "Error setting UtteranceProgressListener", e)
         }
     }
 
@@ -119,6 +152,7 @@ class TtsManager(context: Context) {
 
     fun stop() {
         tts?.stop()
+        mainHandler.post { onSpeakingListener?.invoke(false) }
     }
 
     fun release() {
@@ -126,5 +160,6 @@ class TtsManager(context: Context) {
         tts?.shutdown()
         tts = null
         isInitialized = false
+        mainHandler.post { onSpeakingListener?.invoke(false) }
     }
 }
