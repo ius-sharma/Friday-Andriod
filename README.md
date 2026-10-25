@@ -59,6 +59,16 @@
   - Quick-action microphone button to summon Friday with a single tap.
   - Background periodic sync via Android `WorkManager`.
 
+### 📞 7. AI Telephony & Autonomous Call Proxy
+- **Incoming Caller Identification**: Real-time caller announcement via dialer hooks, contact lookup, and accessibility inspection.
+- **Autonomous Call Proxy ("Friday Baat Karo")**: F.R.I.D.A.Y. can answer incoming phone calls on your behalf, route audio over loudspeaker, and hold a conversational dialogue with callers (delivery drivers, colleagues, banks, telemarketers) using Gemini Multimodal reasoning.
+- **Post-Call Briefing**: Once the call hangs up, Friday provides an instant spoken and whisper summary of what the caller needed.
+- **Direct Voice Calling**: Dial contacts or phone numbers seamlessly (`"call Rahul"`, `"phone lagao Papa ko"`, `"call uthao"`, `"call cut karo"`).
+
+### 🛡️ 8. 24/7 Watchdog & Boot Resilience
+- **Persistent Unlock Watchdog**: `FridayUnlockReceiver` registered at system level to trigger morning greetings and resurrect Friday services if killed by aggressive OEM battery cleaners.
+- **Overnight Unrestricted Execution**: Optimized for zero-sleep standby to ensure morning briefings fire without fail.
+
 ---
 
 ## 🏗️ System Architecture
@@ -189,9 +199,13 @@ F.R.I.D.A.Y. was engineered with strict user privacy as a foundational principle
 | `SYSTEM_ALERT_WINDOW` | Display the interactive floating HUD and response overlays. |
 | `RECORD_AUDIO` | Real-time wake-word spotter on-device. |
 | `FOREGROUND_SERVICE_MEDIA_PROJECTION` | Visual screen analysis for contextual assistant capabilities. |
-| `BIND_ACCESSIBILITY_SERVICE` | Executing automation actions (opening apps, smart taps). |
+| `BIND_ACCESSIBILITY_SERVICE` | Executing automation actions (opening apps, smart taps, in-call speaker control). |
 | `ACCESS_COARSE_LOCATION` | Fetching local weather data for the home screen widget. |
 | `PACKAGE_USAGE_STATS` | Detecting foreground apps for situational doomscrolling nudges. |
+| `CALL_PHONE` | Initiating voice calls on your command. |
+| `ANSWER_PHONE_CALLS` & `READ_PHONE_STATE` | Screen incoming calls and manage hands-free call answering / proxy. |
+| `READ_CONTACTS` & `READ_CALL_LOG` | Resolving contact names for incoming calls and voice dialing. |
+| `RECEIVE_BOOT_COMPLETED` | Auto-resurrecting watchdog service upon device restart. |
 
 ---
 
