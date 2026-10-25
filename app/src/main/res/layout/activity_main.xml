@@ -1,86 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/stark_bg_dark">
 
-    <LinearLayout
-        android:id="@+id/llHomeContent"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-
-        <!-- Header: F.R.I.D.A.Y. ODDSOCEAN & Settings Icon -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="20dp"
-            android:paddingBottom="12dp">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-black"
-                    android:letterSpacing="0.16"
-                    android:text="F.R.I.D.A.Y."
-                    android:textColor="@color/stark_cyan"
-                    android:textSize="26sp" />
-
-                <TextView
-                    android:id="@+id/tvSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:letterSpacing="0.12"
-                    android:text="ODDSOCEAN"
-                    android:textColor="@color/stark_text_white"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/btnOpenSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Settings"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_settings_gear" />
-        </RelativeLayout>
+        android:layout_height="match_parent">
 
         <ScrollView
+            android:id="@+id/scrollHomeContent"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:fillViewport="true">
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingBottom="100dp"
+            android:scrollbars="none">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_horizontal"
                 android:orientation="vertical"
-                android:paddingHorizontal="24dp"
-                android:paddingBottom="24dp">
+                android:paddingHorizontal="20dp"
+                android:paddingTop="16dp">
 
-                <!-- Living Particle Orb (Hero Element) -->
+                <!-- Header: Dynamic Greeting, Title, Status Badge & Settings -->
+                <RelativeLayout
+                    android:id="@+id/layoutHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="4dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvGreeting"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.14"
+                            android:text="LATE NIGHT, BOSS"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            tools:text="GOOD EVENING, BOSS" />
+
+                        <TextView
+                            android:id="@+id/tvTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:fontFamily="sans-serif-black"
+                            android:letterSpacing="0.14"
+                            android:text="F.R.I.D.A.Y."
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="24sp" />
+
+                        <TextView
+                            android:id="@+id/tvSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:letterSpacing="0.10"
+                            android:text="ODDSOCEAN • CYBERNETIC CO-PILOT"
+                            android:textColor="@color/stark_text_dim"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <!-- Core Status Pill -->
+                        <LinearLayout
+                            android:id="@+id/layoutCoreBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_status_pill"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="5dp">
+
+                            <View
+                                android:id="@+id/dotCoreStatus"
+                                android:layout_width="7dp"
+                                android:layout_height="7dp"
+                                android:background="@drawable/bg_dot_inactive" />
+
+                            <TextView
+                                android:id="@+id/tvCoreBadge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:letterSpacing="0.08"
+                                android:text="STANDBY"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Settings Gear Button -->
+                        <ImageButton
+                            android:id="@+id/btnOpenSettings"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_marginStart="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Settings"
+                            android:padding="8dp"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_settings_gear" />
+                    </LinearLayout>
+                </RelativeLayout>
+
+                <!-- Hero Center: Particle Orb View (Hero Element) -->
                 <FrameLayout
                     android:id="@+id/flOrbContainer"
-                    android:layout_width="220dp"
-                    android:layout_height="220dp"
-                    android:layout_marginTop="8dp">
+                    android:layout_width="190dp"
+                    android:layout_height="190dp"
+                    android:layout_marginTop="12dp">
 
                     <com.personal.friday.ParticleOrbView
                         android:id="@+id/particleOrbView"
@@ -93,155 +144,428 @@
                     android:id="@+id/tvCoreStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:letterSpacing="0.14"
+                    android:layout_marginTop="8dp"
+                    android:letterSpacing="0.12"
                     android:text="ALL SYSTEMS NOMINAL • CORE AT 100%"
                     android:textColor="@color/stark_gold"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvOrbHint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="2dp"
                     android:letterSpacing="0.06"
                     android:text="Tap Orb to Test Neural Link"
                     android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
+                    android:textSize="10sp" />
 
-                <!-- Telemetry HUD Card 1: Core Power & Thermals -->
-                <LinearLayout
-                    android:id="@+id/cardTelemetryPower"
+                <!-- Section Label: Sentinels -->
+                <TextView
+                    android:id="@+id/tvSectionSentinels"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:background="@drawable/bg_hud_card"
-                    android:orientation="vertical">
-
-                    <RelativeLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.1"
-                            android:text="⚡ CORE POWER &amp; THERMALS"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvBatteryPercent"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentEnd="true"
-                            android:fontFamily="sans-serif-black"
-                            android:text="--%"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="13sp" />
-                    </RelativeLayout>
-
-                    <TextView
-                        android:id="@+id/tvThermalStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Thermals: Reading sensor..."
-                        android:textColor="@color/stark_text_dim"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <!-- Telemetry HUD Card 2: Neural Memory (RAM) -->
-                <LinearLayout
-                    android:id="@+id/cardTelemetryMemory"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_hud_card"
-                    android:orientation="vertical">
-
-                    <RelativeLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.1"
-                            android:text="🧠 NEURAL MEMORY (RAM)"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvRamUsage"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentEnd="true"
-                            android:fontFamily="sans-serif-black"
-                            android:text="-- / --"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="13sp" />
-                    </RelativeLayout>
-
-                    <TextView
-                        android:id="@+id/tvRamState"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Memory Pressure: Optimal • Neural Matrix Ready"
-                        android:textColor="@color/stark_text_dim"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <!-- Telemetry HUD Card 3: Active Protocols & Defenses -->
-                <LinearLayout
-                    android:id="@+id/cardTelemetryProtocols"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_hud_card"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:letterSpacing="0.1"
-                        android:text="🛡️ ACTIVE DEFENSES &amp; PROTOCOLS"
-                        android:textColor="@color/stark_cyan"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvActiveProtocolsSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:lineSpacingExtra="2dp"
-                        android:text="• Screen Sentry: Active\n• Doomscroll Protocol: Armed\n• Voice Wake: Offline KWS Active"
-                        android:textColor="@color/stark_text_dim"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <!-- Big Initialize Overlay Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnToggleService"
-                    android:layout_width="match_parent"
-                    android:layout_height="58dp"
-                    android:layout_marginTop="22dp"
-                    app:backgroundTint="#FF6D00"
-                    app:cornerRadius="14dp"
-                    android:letterSpacing="0.08"
-                    android:text="@string/start_service"
-                    android:textColor="#000000"
-                    android:textSize="16sp"
+                    android:layout_marginTop="18dp"
+                    android:layout_marginBottom="8dp"
+                    android:letterSpacing="0.12"
+                    android:text="DEFENSES &amp; AUTONOMOUS SENTINELS"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
+
+                <!-- Bento Grid Row 1: Dual Sentinel Pods -->
+                <LinearLayout
+                    android:id="@+id/layoutBentoRow1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal"
+                    android:weightSum="2">
+
+                    <!-- Bento Card 1: Screen Sentry -->
+                    <LinearLayout
+                        android:id="@+id/cardSentry"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_bento_card_ripple"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:orientation="vertical">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.08"
+                                android:text="🛡️ SENTRY"
+                                android:textColor="@color/stark_cyan"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvSentryStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:letterSpacing="0.06"
+                                android:text="STANDBY"
+                                android:textColor="#BDBDBD"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+                        </RelativeLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Screen Overwatch"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvSentrySub"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Real-time OCR &amp; context intelligence"
+                            android:textColor="@color/stark_text_dim"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <!-- Bento Card 2: Doomscroll Sentinel -->
+                    <LinearLayout
+                        android:id="@+id/cardDoomscroll"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_bento_card_ripple"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:orientation="vertical">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.08"
+                                android:text="📱 DOOMSCROLL"
+                                android:textColor="@color/stark_cyan"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvDoomscrollStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:letterSpacing="0.06"
+                                android:text="ARMED"
+                                android:textColor="#00E676"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+                        </RelativeLayout>
+
+                        <TextView
+                            android:id="@+id/tvDoomscrollMetric"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="0 / 10 Reels"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ProgressBar
+                            android:id="@+id/pbDoomscroll"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="4dp"
+                            android:layout_marginTop="6dp"
+                            android:max="10"
+                            android:progress="0"
+                            android:progressDrawable="@drawable/progress_bar_orange" />
+
+                        <TextView
+                            android:id="@+id/tvDoomscrollSub"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Binge-scrolling interceptor"
+                            android:textColor="@color/stark_text_dim"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Section Label: Vitals -->
+                <TextView
+                    android:id="@+id/tvSectionVitals"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp"
+                    android:letterSpacing="0.12"
+                    android:text="CORE VITALS &amp; TELEMETRY"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <!-- Bento Grid Row 2: Power & RAM Vitals -->
+                <LinearLayout
+                    android:id="@+id/layoutBentoRow2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal"
+                    android:weightSum="2">
+
+                    <!-- Bento Card 3: Power & Thermals -->
+                    <LinearLayout
+                        android:id="@+id/cardTelemetryPower"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_bento_card"
+                        android:orientation="vertical">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.08"
+                                android:text="⚡ POWER"
+                                android:textColor="@color/stark_cyan"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvBatteryPercent"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="sans-serif-black"
+                                android:text="--%"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="13sp" />
+                        </RelativeLayout>
+
+                        <ProgressBar
+                            android:id="@+id/pbBattery"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="4dp"
+                            android:layout_marginTop="6dp"
+                            android:max="100"
+                            android:progress="0"
+                            android:progressDrawable="@drawable/progress_bar_orange" />
+
+                        <TextView
+                            android:id="@+id/tvThermalStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Thermals: Reading..."
+                            android:textColor="@color/stark_text_dim"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <!-- Bento Card 4: Neural Memory (RAM) -->
+                    <LinearLayout
+                        android:id="@+id/cardTelemetryMemory"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_bento_card"
+                        android:orientation="vertical">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.08"
+                                android:text="🧠 NEURAL RAM"
+                                android:textColor="@color/stark_cyan"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvRamUsage"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="sans-serif-black"
+                                android:text="-- / --"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="11sp" />
+                        </RelativeLayout>
+
+                        <ProgressBar
+                            android:id="@+id/pbRam"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="4dp"
+                            android:layout_marginTop="6dp"
+                            android:max="100"
+                            android:progress="0"
+                            android:progressDrawable="@drawable/progress_bar_orange" />
+
+                        <TextView
+                            android:id="@+id/tvRamState"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Pressure: Optimal"
+                            android:textColor="@color/stark_text_dim"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Section Label: Quick Neural Shortcuts -->
+                <TextView
+                    android:id="@+id/tvSectionActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp"
+                    android:letterSpacing="0.12"
+                    android:text="QUICK NEURAL ACTIONS"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <!-- Bento Row 3: Quick Action Chips (Horizontal Scroll) -->
+                <HorizontalScrollView
+                    android:id="@+id/layoutBentoRow3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingVertical="2dp">
+
+                        <LinearLayout
+                            android:id="@+id/chipWhatsApp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:background="@drawable/bg_chip_command"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.04"
+                                android:text="💬 WhatsApp"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/chipMusic"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:background="@drawable/bg_chip_command"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.04"
+                                android:text="🎵 Play Music"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/chipAutoType"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:background="@drawable/bg_chip_command"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.04"
+                                android:text="✍️ Auto-Type"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/chipSyncWidget"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_chip_command"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="0.04"
+                                android:text="🌤️ Sync HUD"
+                                android:textColor="@color/stark_text_white"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </HorizontalScrollView>
 
             </LinearLayout>
         </ScrollView>
-    </LinearLayout>
+
+        <!-- Floating Glass Bottom Dock (Fixed at bottom) -->
+        <FrameLayout
+            android:id="@+id/layoutBottomDock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:background="@drawable/bg_dock_glass">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleService"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:letterSpacing="0.08"
+                android:text="@string/start_service"
+                android:textColor="#000000"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:backgroundTint="#FF6D00"
+                app:cornerRadius="16dp" />
+        </FrameLayout>
+    </RelativeLayout>
 
     <!-- Fullscreen Nanotech Swarm Layer (App Launch Intro) -->
     <com.personal.friday.NanotechParticleView
