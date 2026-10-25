@@ -1,14 +1,18 @@
 package com.personal.friday
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
+import java.util.Locale
 
 class FridayAccessibilityService : AccessibilityService() {
 
@@ -17,6 +21,22 @@ class FridayAccessibilityService : AccessibilityService() {
     private var lastScrollEventTime = 0L
     private var lastContentChangeCheckTime = 0L
     private var lastReelSignature = ""
+    private var isReceiverRegistered = false
+
+    private val unlockReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_USER_PRESENT -> {
+                    Log.i(TAG, "Screen unlocked by Sir! Triggering health check and morning greeting...")
+                    checkOverlayHealth()
+                    FridayOverlayService.instance?.checkAndTriggerMorningGreeting(isManualTest = false)
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    checkOverlayHealth()
+                }
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "FridayAccessibility"
@@ -36,12 +56,31 @@ class FridayAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.i(TAG, "FridayAccessibilityService connected and ready for auto-typing!")
+
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_USER_PRESENT)
+                addAction(Intent.ACTION_SCREEN_ON)
+            }
+            registerReceiver(unlockReceiver, filter)
+            isReceiverRegistered = true
+            Log.i(TAG, "Registered dynamic screen unlock receiver in AccessibilityService")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register unlockReceiver: ${e.message}")
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
 
         val pkg = event.packageName?.toString() ?: return
+
+        checkOverlayHealth()
+
+        // Intercept incoming call info (read-only)
+        if (com.personal.friday.telephony.FridayTelephonyManager.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_RINGING) {
+            tryExtractIncomingCaller(event, pkg)
+        }
 
         // NEVER store or track Friday's own overlay or app as target for typing
         if (pkg == packageName || pkg.startsWith("com.personal.friday")) {
@@ -137,7 +176,33 @@ class FridayAccessibilityService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+    private var lastWatchdogCheck = 0L
+
+    private fun checkOverlayHealth() {
+        val now = System.currentTimeMillis()
+        if (now - lastWatchdogCheck < 15000L) return
+        lastWatchdogCheck = now
+
+        try {
+            val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+            val wasEnabled = prefs.getBoolean("friday_enabled", false)
+            if (wasEnabled && !FridayOverlayService.isRunning) {
+                Log.w(TAG, "Accessibility watchdog detected FridayOverlayService was killed! Resurrecting...")
+                val startIntent = Intent(this, FridayOverlayService::class.java)
+                androidx.core.content.ContextCompat.startForegroundService(this, startIntent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Watchdog error: ${e.message}")
+        }
+    }
+
     override fun onDestroy() {
+        if (isReceiverRegistered) {
+            try {
+                unregisterReceiver(unlockReceiver)
+            } catch (ignored: Exception) {}
+            isReceiverRegistered = false
+        }
         lastExternalFocusedNode = null
         lastExternalPackage = null
         currentForegroundPackage = null
@@ -563,5 +628,134 @@ class FridayAccessibilityService : AccessibilityService() {
             return ""
         }
         return findSig(root, 0)
+    }
+
+    private var lastSpeakerClickTime = 0L
+
+    fun clickSpeakerphoneButton(): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - lastSpeakerClickTime < 3500L) {
+            Log.d(TAG, "clickSpeakerphoneButton skipped (cooldown active)")
+            return false
+        }
+        val speakerRegex = Regex("""(?i)\b(speaker|loudspeaker|speakerphone|hands-free|audio|स्पीकर|लाउडस्पीकर)\b""")
+        val speakerIds = listOf(
+            "incall_speaker_button", "speaker", "audiobutton", "speaker_button",
+            "handsfree", "audio_button", "incall_audio_button", "call_card_speaker"
+        )
+
+        val candidateRoots = mutableListOf<AccessibilityNodeInfo>()
+        rootInActiveWindow?.let { candidateRoots.add(it) }
+        try {
+            for (window in windows) {
+                window.root?.let { if (!candidateRoots.contains(it)) candidateRoots.add(it) }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error enumerating windows for speakerphone", e)
+        }
+
+        fun searchAndClick(node: AccessibilityNodeInfo?): Boolean {
+            if (node == null) return false
+            val text = node.text?.toString() ?: ""
+            val desc = node.contentDescription?.toString() ?: ""
+            val viewId = node.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
+
+            val matches = speakerRegex.containsMatchIn(text) ||
+                    speakerRegex.containsMatchIn(desc) ||
+                    speakerIds.any { viewId.contains(it) }
+
+            if (matches) {
+                val isAlreadyOn = node.isChecked || node.isSelected ||
+                        desc.contains("on", ignoreCase = true) ||
+                        desc.contains("active", ignoreCase = true)
+                if (isAlreadyOn) {
+                    Log.i(TAG, "Speakerphone is ALREADY active: text='$text', desc='$desc', id='$viewId'")
+                    lastSpeakerClickTime = now
+                    return true
+                }
+
+                // If not directly clickable, climb up to find clickable parent
+                var clickTarget: AccessibilityNodeInfo? = node
+                while (clickTarget != null && !clickTarget.isClickable) {
+                    clickTarget = clickTarget.parent
+                }
+                val targetToClick = clickTarget ?: node
+                val clicked = targetToClick.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                if (clicked) {
+                    lastSpeakerClickTime = now
+                }
+                Log.i(TAG, "Clicked in-call speakerphone node: text='$text', desc='$desc', id='$viewId', clicked=$clicked")
+                return clicked
+            }
+
+            val count = node.childCount.coerceAtMost(35)
+            for (i in 0 until count) {
+                val child = node.getChild(i) ?: continue
+                if (searchAndClick(child)) return true
+            }
+            return false
+        }
+
+        for (rootNode in candidateRoots) {
+            try {
+                if (searchAndClick(rootNode)) return true
+            } catch (e: Exception) {
+                Log.w(TAG, "Error traversing window root for speaker", e)
+            }
+        }
+        return false
+    }
+
+    private fun tryExtractIncomingCaller(event: AccessibilityEvent, pkg: String) {
+        val dialerKeywords = arrayOf("dialer", "phone", "incallui", "telecom", "upslide")
+        val isDialer = dialerKeywords.any { pkg.lowercase(Locale.ROOT).contains(it) }
+        if (!isDialer) return
+
+        val texts = mutableListOf<String>()
+        event.text?.forEach { t -> if (!t.isNullOrBlank()) texts.add(t.toString()) }
+
+        val notification = event.parcelableData as? android.app.Notification
+        if (notification != null) {
+            val title = notification.extras?.getString(android.app.Notification.EXTRA_TITLE)
+            if (!title.isNullOrBlank()) texts.add(title)
+            val subText = notification.extras?.getString(android.app.Notification.EXTRA_TEXT)
+            if (!subText.isNullOrBlank()) texts.add(subText)
+            val bigTitle = notification.extras?.getString(android.app.Notification.EXTRA_TITLE_BIG)
+            if (!bigTitle.isNullOrBlank()) texts.add(bigTitle)
+        }
+
+        // Recursively inspect event.source or active dialer window to find contact name TextView
+        fun harvestTexts(node: AccessibilityNodeInfo?, depth: Int = 0) {
+            if (node == null || depth > 8) return
+            val t = node.text?.toString()?.trim()
+            if (!t.isNullOrBlank()) texts.add(t)
+            val d = node.contentDescription?.toString()?.trim()
+            if (!d.isNullOrBlank()) texts.add(d)
+            val count = node.childCount.coerceAtMost(25)
+            for (i in 0 until count) {
+                harvestTexts(node.getChild(i), depth + 1)
+            }
+        }
+
+        event.source?.let { harvestTexts(it) }
+
+        val blacklist = listOf(
+            "incoming", "calling", "missed", "call", "decline", "answer",
+            "swipe", "reply", "remind", "silent", "phone", "dialer", "ongoing",
+            "speaker", "mute", "bluetooth", "hold", "add", "keypad", "contact", "contacts"
+        )
+
+        for (candidate in texts) {
+            val clean = candidate.trim()
+            if (clean.length in 2..45) {
+                val lower = clean.lowercase(Locale.ROOT)
+                val isJunk = blacklist.any { lower == it || lower.startsWith("$it ") || lower.endsWith(" $it") }
+                if (!isJunk && !lower.contains("incoming call") && !lower.contains("calling...")) {
+                    Log.i(TAG, "Extracted caller name from dialer UI: '$clean'")
+                    com.personal.friday.telephony.FridayTelephonyManager.updateIncomingCaller(this, "", clean)
+                    break
+                }
+            }
+        }
     }
 }
