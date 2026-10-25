@@ -104,6 +104,36 @@
                     android:text="• Auto-Type (Accessibility): Checking..."
                     android:textColor="@color/stark_text_dim"
                     android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tvTelephonyPermissionStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="• Calling &amp; Contacts: Checking..."
+                    android:textColor="@color/stark_text_dim"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tvBatteryOptimizationStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="• Overnight Run (No Battery Limits): Checking..."
+                    android:textColor="@color/stark_text_dim"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDisableBatteryRestrictions"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="12dp"
+                    app:cornerRadius="10dp"
+                    app:backgroundTint="#FF6D00"
+                    android:text="DISABLE BATTERY LIMITS (RUN OVERNIGHT)"
+                    android:textColor="#000000"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <!-- API Key Configuration Card -->
@@ -323,7 +353,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:lineSpacingExtra="3dp"
-                    android:text="• 100% Free &amp; Offline — Zero API keys required!\n• Just say 'Friday' or 'Hey Friday' anywhere on your phone.\n• Arc Reactor will wake up asking: 'Yes Boss?'"
+                    android:text="• 100% Free &amp; Offline — Zero API keys required!\n• Just say 'Friday' or 'Hey Friday' anywhere on your phone.\n• Arc Reactor will wake up asking: 'Yes Sir?'"
                     android:textColor="@color/stark_text_dim"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -402,6 +432,64 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <!-- Autonomous In-Call Proxy Agent Card -->
+            <LinearLayout
+                android:id="@+id/cardCallProxy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_hud_card"
+                android:orientation="vertical">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:letterSpacing="0.1"
+                        android:text="AUTONOMOUS IN-CALL PROXY AGENT"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+
+                <TextView
+                    android:id="@+id/tvCallProxyState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Status: ACTIVE • Speaks on Sir's Behalf (&lt;300ms)"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="3dp"
+                    android:text="• Say: &quot;Friday, Rahul ko call lagao&quot; or &quot;Call 9876543210&quot; to dial.\n• When phone rings, say &quot;Friday, tum mere behalf pe baat kar lo&quot; or &quot;Call uthao&quot;.\n• Friday auto-answers, enables speakerphone, introduces herself politely, takes messages, and uses instant barge-in if interrupted.\n• Disconnecting automatically briefs you with caller summary."
+                    android:textColor="@color/stark_text_dim"
+                    android:textSize="11sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTestCallProxyIntro"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="12dp"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/stark_gold"
+                    app:strokeWidth="1dp"
+                    android:text="TEST CALL PROXY INTRO"
+                    android:textColor="@color/stark_gold"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <!-- Personal User Context & Neural Profile Card -->
             <LinearLayout
                 android:id="@+id/cardPersonalContext"
@@ -423,7 +511,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:letterSpacing="0.1"
-                        android:text="BOSS PERSONAL CONTEXT &amp; PROFILE"
+                        android:text="SIR'S PERSONAL CONTEXT &amp; PROFILE"
                         android:textColor="@color/stark_gold"
                         android:textSize="12sp"
                         android:textStyle="bold" />

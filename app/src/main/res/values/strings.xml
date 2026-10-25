@@ -8,8 +8,8 @@
     <string name="stop_service">DISENGAGE F.R.I.D.A.Y.</string>
     <string name="permission_overlay_title">Screen Overlay Permission</string>
     <string name="permission_mic_title">Microphone Access</string>
-    <string name="listening">Listening to Boss…</string>
-    <string name="analyzing">Scanning display, Boss…</string>
+    <string name="listening">Listening to Sir…</string>
+    <string name="analyzing">Scanning display, Sir…</string>
     <string name="accessibility_service_description">Enables F.R.I.D.A.Y. to dictate and auto-type text directly into chats, notes, and input fields upon your voice command.</string>
     <string name="widget_description">Live Weather &amp; Tactical System HUD for F.R.I.D.A.Y.</string>
 </resources>

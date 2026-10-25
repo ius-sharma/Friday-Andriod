@@ -47,11 +47,11 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="sans-serif-medium"
                             android:letterSpacing="0.14"
-                            android:text="LATE NIGHT, BOSS"
+                            android:text="LATE NIGHT, SIR"
                             android:textColor="@color/stark_gold"
                             android:textSize="11sp"
                             android:textStyle="bold"
-                            tools:text="GOOD EVENING, BOSS" />
+                            tools:text="GOOD EVENING, SIR" />
 
                         <TextView
                             android:id="@+id/tvTitle"

@@ -173,7 +173,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Boss: Ready to scan"
+        android:text="Sir: Ready to scan"
         android:textColor="@color/stark_gold"
         android:textSize="13sp"
         android:textStyle="italic" />
@@ -201,7 +201,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="4dp"
-            android:text="Ready for orders, Boss. Tap the mic or type below to analyze your screen."
+            android:text="Ready for orders, Sir. Tap the mic or type below to analyze your screen."
             android:textColor="@color/stark_text_white"
             android:textSize="14sp" />
     </ScrollView>

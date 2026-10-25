@@ -39,6 +39,10 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var btnSaveUserContext: Button
     private lateinit var btnDefaultUserContext: Button
     private lateinit var tvUsageAccessPrompt: TextView
+    private lateinit var tvTelephonyPermissionStatus: TextView
+    private lateinit var tvBatteryOptimizationStatus: TextView
+    private lateinit var btnDisableBatteryRestrictions: Button
+    private lateinit var btnTestCallProxyIntro: Button
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -48,6 +52,12 @@ class SettingsActivity : AppCompatActivity() {
 
     private val micPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
+    ) {
+        updatePermissionStatuses()
+    }
+
+    private val telephonyPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
     ) {
         updatePermissionStatuses()
     }
@@ -88,6 +98,45 @@ class SettingsActivity : AppCompatActivity() {
         btnSaveUserContext = findViewById(R.id.btnSaveUserContext)
         btnDefaultUserContext = findViewById(R.id.btnDefaultUserContext)
         tvUsageAccessPrompt = findViewById(R.id.tvUsageAccessPrompt)
+        tvTelephonyPermissionStatus = findViewById(R.id.tvTelephonyPermissionStatus)
+        tvBatteryOptimizationStatus = findViewById(R.id.tvBatteryOptimizationStatus)
+        btnDisableBatteryRestrictions = findViewById(R.id.btnDisableBatteryRestrictions)
+        btnTestCallProxyIntro = findViewById(R.id.btnTestCallProxyIntro)
+
+        btnDisableBatteryRestrictions.setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    try {
+                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        startActivity(intent)
+                    } catch (_: Exception) {
+                        Toast.makeText(this, "Sir, please set Friday to 'Unrestricted' battery in Settings", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+
+        btnTestCallProxyIntro.setOnClickListener {
+            val introText = "Hello! Main Ayush Sir ki AI Personal Assistant Friday hoon. Sir abhi available nahi hain. Kya aap mujhe bata sakte hain kya zaroori kaam hai?"
+            FridayOverlayService.instance?.let { service ->
+                service.pulseBubbleGlow()
+                service.showWhisper("🤖 Friday: \"$introText\"", 6000L)
+                service.ttsManager.speak(introText)
+            } ?: run {
+                val tts = TtsManager(this)
+                tts.speak(introText)
+            }
+            Toast.makeText(this, "🤖 Call Proxy Intro tested, Sir!", Toast.LENGTH_SHORT).show()
+        }
+
+        tvTelephonyPermissionStatus.setOnClickListener {
+            requestTelephonyPermissions()
+        }
 
         val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
 
@@ -180,7 +229,7 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
             if (!hasUsageStatsPermission()) {
                 val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                 startActivity(intent)
-                Toast.makeText(this, "Boss, please allow Usage Access for auto Home Screen detection.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Sir, please allow Usage Access for auto Home Screen detection.", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -191,9 +240,9 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
                     .edit()
                     .putString("gemini_api_key", key)
                     .apply()
-                Toast.makeText(this, "API Key successfully stored, Boss.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "API Key successfully stored, Sir.", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Please enter a valid key, Boss.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please enter a valid key, Sir.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -216,7 +265,7 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
         tvAccessibilityPermissionStatus.setOnClickListener {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
-            Toast.makeText(this, "Boss, enable 'Friday' in Installed/Downloaded Apps for Auto-Typing.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Sir, enable 'Friday' in Installed/Downloaded Apps for Auto-Typing.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -262,6 +311,51 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
             tvAccessibilityPermissionStatus.text = "• Auto-Type (Accessibility): REQUIRED (Tap to Enable)"
             tvAccessibilityPermissionStatus.setTextColor(getColor(R.color.stark_gold))
         }
+
+        val hasCall = ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+        val hasState = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+        val hasCallLog = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
+        val hasContacts = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+        val hasAnswer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED
+        } else true
+
+        if (hasCall && hasState && hasCallLog && hasContacts && hasAnswer) {
+            tvTelephonyPermissionStatus.text = "• Calling & Caller ID: GRANTED"
+            tvTelephonyPermissionStatus.setTextColor(getColor(R.color.stark_cyan))
+        } else {
+            tvTelephonyPermissionStatus.text = "• Calling & Caller ID: PERMISSION NEEDED (Tap to Grant)"
+            tvTelephonyPermissionStatus.setTextColor(getColor(R.color.stark_gold))
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val isIgnoring = powerManager.isIgnoringBatteryOptimizations(packageName)
+            if (isIgnoring) {
+                tvBatteryOptimizationStatus.text = "• Overnight Run (No Battery Limits): UNRESTRICTED (Active)"
+                tvBatteryOptimizationStatus.setTextColor(getColor(R.color.stark_cyan))
+                btnDisableBatteryRestrictions.text = "BATTERY RESTRICTIONS DISABLED (24/7 ACTIVE)"
+                btnDisableBatteryRestrictions.alpha = 0.6f
+            } else {
+                tvBatteryOptimizationStatus.text = "• Overnight Run: RESTRICTED (May sleep overnight)"
+                tvBatteryOptimizationStatus.setTextColor(getColor(R.color.stark_gold))
+                btnDisableBatteryRestrictions.text = "DISABLE BATTERY LIMITS (RUN OVERNIGHT)"
+                btnDisableBatteryRestrictions.alpha = 1.0f
+            }
+        }
+    }
+
+    private fun requestTelephonyPermissions() {
+        val perms = mutableListOf(
+            android.Manifest.permission.CALL_PHONE,
+            android.Manifest.permission.READ_PHONE_STATE,
+            android.Manifest.permission.READ_CALL_LOG,
+            android.Manifest.permission.READ_CONTACTS
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            perms.add(android.Manifest.permission.ANSWER_PHONE_CALLS)
+        }
+        telephonyPermissionLauncher.launch(perms.toTypedArray())
     }
 
     private fun updateOverwatchText(enabled: Boolean) {

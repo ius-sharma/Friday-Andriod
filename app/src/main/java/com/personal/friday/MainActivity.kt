@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             startFridayService(result.resultCode, result.data!!)
         } else {
-            Toast.makeText(this, "Screen capture permission denied, Boss.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Screen capture permission denied, Sir.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity() {
             tvCoreStatus.text = "NEURAL LINK ACTIVE • LISTENING"
             tvCoreStatus.setTextColor(getColor(R.color.stark_cyan))
             if (isTtsReady) {
-                tts?.speak("All systems nominal, Boss. Online and ready.", TextToSpeech.QUEUE_FLUSH, null, "orb_click")
+                tts?.speak("All systems nominal, Sir. Online and ready.", TextToSpeech.QUEUE_FLUSH, null, "orb_click")
             }
             flOrbContainer.postDelayed({
                 updateServiceStateUI()
@@ -272,7 +272,7 @@ class MainActivity : AppCompatActivity() {
                 val launchIntent = packageManager.getLaunchIntentForPackage("com.whatsapp")
                 if (launchIntent != null) {
                     startActivity(launchIntent)
-                    if (isTtsReady) tts?.speak("Opening WhatsApp, Boss.", TextToSpeech.QUEUE_FLUSH, null, "chip_wa")
+                    if (isTtsReady) tts?.speak("Opening WhatsApp, Sir.", TextToSpeech.QUEUE_FLUSH, null, "chip_wa")
                 } else {
                     Toast.makeText(this, "WhatsApp is not installed on this device.", Toast.LENGTH_SHORT).show()
                 }
@@ -285,7 +285,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=trending+music"))
                 startActivity(intent)
-                if (isTtsReady) tts?.speak("Opening music, Boss.", TextToSpeech.QUEUE_FLUSH, null, "chip_music")
+                if (isTtsReady) tts?.speak("Opening music, Sir.", TextToSpeech.QUEUE_FLUSH, null, "chip_music")
             } catch (e: Exception) {
                 Toast.makeText(this, "Unable to launch music player.", Toast.LENGTH_SHORT).show()
             }
@@ -294,7 +294,7 @@ class MainActivity : AppCompatActivity() {
         chipAutoType.setOnClickListener {
             val isA11yEnabled = isAccessibilityServiceEnabled()
             val msg = if (isA11yEnabled) {
-                "Smart Auto-Type is Active! Say 'type [your text]' in any chat, Boss."
+                "Smart Auto-Type is Active! Say 'type [your text]' in any chat, Sir."
             } else {
                 "Enable F.R.I.D.A.Y. Accessibility in Settings to use Smart Auto-Type."
             }
@@ -304,8 +304,8 @@ class MainActivity : AppCompatActivity() {
 
         chipSyncWidget.setOnClickListener {
             com.personal.friday.widget.FridayHudWidgetProvider.triggerAsyncWeatherRefresh(this)
-            Toast.makeText(this, "HUD Widget refreshed with latest telemetry, Boss.", Toast.LENGTH_SHORT).show()
-            if (isTtsReady) tts?.speak("HUD Widget synchronized, Boss.", TextToSpeech.QUEUE_FLUSH, null, "chip_sync")
+            Toast.makeText(this, "HUD Widget refreshed with latest telemetry, Sir.", Toast.LENGTH_SHORT).show()
+            if (isTtsReady) tts?.speak("HUD Widget synchronized, Sir.", TextToSpeech.QUEUE_FLUSH, null, "chip_sync")
         }
 
         // Toggle Service Button
@@ -339,11 +339,11 @@ class MainActivity : AppCompatActivity() {
     private fun updateDynamicGreeting() {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val greeting = when (hour) {
-            in 5..11 -> "GOOD MORNING, BOSS"
-            in 12..16 -> "GOOD AFTERNOON, BOSS"
-            in 17..21 -> "GOOD EVENING, BOSS"
-            in 22..23 -> "LATE NIGHT, BOSS"
-            else -> "SYSTEMS ON STANDBY, BOSS"
+            in 5..11 -> "GOOD MORNING, SIR"
+            in 12..16 -> "GOOD AFTERNOON, SIR"
+            in 17..21 -> "GOOD EVENING, SIR"
+            in 22..23 -> "LATE NIGHT, SIR"
+            else -> "SYSTEMS ON STANDBY, SIR"
         }
         tvGreeting.text = greeting
     }
@@ -483,6 +483,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startFridayService(resultCode: Int, data: Intent) {
+        getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("friday_enabled", true)
+            .apply()
+
         val serviceIntent = Intent(this, FridayOverlayService::class.java).apply {
             action = FridayOverlayService.ACTION_START_PROJECTION
             putExtra(FridayOverlayService.EXTRA_RESULT_CODE, resultCode)
@@ -502,6 +507,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopFridayService() {
+        getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("friday_enabled", false)
+            .apply()
+
         val serviceIntent = Intent(this, FridayOverlayService::class.java)
         stopService(serviceIntent)
         flOrbContainer.postDelayed({
