@@ -62,6 +62,12 @@ object FridayActionExecutor {
             return null
         }
 
+        // 0. Try Telephony & Calling Actions ("call Rahul", "call 9876543210", "call uthao", "mere behalf pe baat kar lo", "call cut karo")
+        val telephonyResult = tryExecuteTelephony(context, q)
+        if (telephonyResult != null) {
+            return telephonyResult
+        }
+
         // 1. Try Alarms & Timers ("friday alarm laga do 7 baje ka", "timer laga do 5 min", etc.)
         val alarmResult = tryExecuteAlarm(context, q)
         if (alarmResult != null) {
@@ -89,6 +95,121 @@ object FridayActionExecutor {
         return null
     }
 
+    // --- TELEPHONY & CALL ACTIONS ---
+
+    private fun tryExecuteTelephony(context: Context, query: String): ActionResult? {
+        val lower = query.lowercase().trim()
+
+        // 1. Proxy Mode: "tum mere behalf pe baat kar lo", "tum baat kar lo", "meri jagah tum baat karo"
+        val isProxyRequest = lower.contains("behalf") ||
+                lower.contains("tum baat kar lo") ||
+                lower.contains("tum baat karo") ||
+                lower.contains("meri jagah tum") ||
+                lower.contains("proxy call") ||
+                lower.contains("call handle karo")
+        if (isProxyRequest) {
+            val service = com.personal.friday.FridayOverlayService.instance
+            return if (service != null) {
+                service.startCallProxyMode()
+                ActionResult(
+                    success = true,
+                    ttsMessage = "", // Do not speak a local response so intro plays cleanly through in-call path
+                    whisperMessage = "🤖 Call Proxy Active: Talking on Sir's Behalf"
+                )
+            } else {
+                ActionResult(
+                    success = false,
+                    ttsMessage = "Sir, Friday service standby mode par hai. Overlay start karein.",
+                    whisperMessage = "⚠️ Service Standby"
+                )
+            }
+        }
+
+        // 2. Answer Incoming Call: "call uthao", "call pick karo", "call receive karo", "pick up call", "answer call"
+        val isAnswerRequest = lower.contains("call uthao") ||
+                lower.contains("call utha") ||
+                lower.contains("call pick") ||
+                lower.contains("phone uthao") ||
+                lower.contains("pick up") ||
+                lower.contains("answer call") ||
+                lower.contains("call receive") ||
+                lower.matches(Regex("""^(?:friday\s+)?(?:call\s+(?:uthao|utha\s*lo|pick\s*karo|receive\s*karo|accept\s*karo)|pick\s+up(?:\s+the)?\s+call|answer(?:\s+the)?\s+call)$"""))
+        if (isAnswerRequest) {
+            val success = com.personal.friday.telephony.FridayTelephonyManager.acceptCall(context)
+            return if (success) {
+                ActionResult(
+                    success = true,
+                    ttsMessage = "Call pick kar liya hai, Sir.",
+                    whisperMessage = "📞 Call Answered"
+                )
+            } else {
+                ActionResult(
+                    success = false,
+                    ttsMessage = "Sir, call answer nahi ho paya. Permission check karein.",
+                    whisperMessage = "⚠️ Call Answer Failed"
+                )
+            }
+        }
+
+        // 3. Speakerphone control: "speaker on karo", "speaker pe daalo", "loudspeaker on karo"
+        val isSpeakerRequest = lower.contains("speaker on") ||
+                lower.contains("speaker pe") ||
+                lower.contains("loudspeaker on") ||
+                lower.contains("speakerphone on")
+        if (isSpeakerRequest) {
+            com.personal.friday.telephony.FridayTelephonyManager.setSpeakerphoneEnabled(context, true)
+            com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
+            return ActionResult(
+                success = true,
+                ttsMessage = "Speakerphone on kar diya hai, Sir.",
+                whisperMessage = "🔊 Speakerphone Active"
+            )
+        }
+
+        // 4. End Call: "call cut karo", "call kaat do", "disconnect call", "end call", "hang up"
+        val isEndRequest = lower.contains("call cut") ||
+                lower.contains("call kaat") ||
+                lower.contains("phone kaat") ||
+                lower.contains("call disconnect") ||
+                lower.contains("hang up") ||
+                lower.contains("call end") ||
+                lower.matches(Regex("""^(?:friday\s+)?(?:call\s+(?:cut\s*karo|kaat\s*do|end\s*karo|disconnect\s*karo)|end\s+call|disconnect\s+call|hang\s*up)$"""))
+        if (isEndRequest) {
+            val success = com.personal.friday.telephony.FridayTelephonyManager.endCall(context)
+            com.personal.friday.FridayOverlayService.instance?.stopCallProxyMode()
+            return ActionResult(
+                success = true,
+                ttsMessage = if (success) "Call disconnect kar diya hai, Sir." else "Call end request bhej di hai, Sir.",
+                whisperMessage = "📞 Call Disconnected"
+            )
+        }
+
+        // 4. Dial Out / Make Call:
+        // "call Rahul", "call 9876543210", "Rahul ko call lagao", "Mummy ko call karo", "Papa ko phone lagao"
+        val callRegexes = listOf(
+            Regex("""^(?:friday\s+)?call\s+(?:to\s+)?([a-zA-Z0-9+\s]+)$"""),
+            Regex("""^(?:friday\s+)?([a-zA-Z0-9+\s]+?)\s+ko\s+(?:call|phone)\s+(?:lagao|karo|laga\s*do)$"""),
+            Regex("""^(?:friday\s+)?(?:phone|call)\s+(?:karo|lagao|laga\s*do)\s+([a-zA-Z0-9+\s]+)$""")
+        )
+
+        for (regex in callRegexes) {
+            val m = regex.find(lower)
+            if (m != null) {
+                val target = m.groupValues[1].trim()
+                if (target == "word" || target == "settings" || target == "proxy" || target == "record" || target == "karo" || target == "lagao") continue
+
+                val (ok, msg) = com.personal.friday.telephony.FridayTelephonyManager.makeCall(context, target)
+                return ActionResult(
+                    success = ok,
+                    ttsMessage = msg,
+                    whisperMessage = if (ok) "📞 Calling: $target" else "⚠️ Call Failed"
+                )
+            }
+        }
+
+        return null
+    }
+
     // --- ALARMS & TIMERS ---
 
     private fun tryExecuteAlarm(context: Context, query: String): ActionResult? {
@@ -107,10 +228,10 @@ object FridayActionExecutor {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
-                ActionResult(true, "Displaying your alarms, Boss.", "⏰ Showing Alarms")
+                ActionResult(true, "Displaying your alarms, Sir.", "⏰ Showing Alarms")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to show alarms", e)
-                ActionResult(false, "Boss, alarms open karne me dikkat aayi: ${e.message}", "⚠️ Alarm Error")
+                ActionResult(false, "Sir, alarms open karne me dikkat aayi: ${e.message}", "⚠️ Alarm Error")
             }
         }
 
@@ -138,7 +259,7 @@ object FridayActionExecutor {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
-                ActionResult(true, "Setting a $displayStr timer, Boss.", "⏳ Timer: $displayStr")
+                ActionResult(true, "Setting a $displayStr timer, Sir.", "⏳ Timer: $displayStr")
             } catch (e: Exception) {
                 try {
                     val fallbackIntent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
@@ -147,9 +268,9 @@ object FridayActionExecutor {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     context.startActivity(fallbackIntent)
-                    ActionResult(true, "Timer set for $displayStr, Boss.", "⏳ Timer: $displayStr")
+                    ActionResult(true, "Timer set for $displayStr, Sir.", "⏳ Timer: $displayStr")
                 } catch (t: Throwable) {
-                    ActionResult(false, "Boss, timer set nahi ho paya: ${t.message}", "⚠️ Timer Error")
+                    ActionResult(false, "Sir, timer set nahi ho paya: ${t.message}", "⚠️ Timer Error")
                 }
             }
         }
@@ -236,9 +357,9 @@ object FridayActionExecutor {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
-                ActionResult(true, "Alarm setup open kar diya hai Boss, time select kar lijiye.", "⏰ Setting Alarm")
+                ActionResult(true, "Alarm setup open kar diya hai Sir, time select kar lijiye.", "⏰ Setting Alarm")
             } catch (e: Exception) {
-                ActionResult(false, "Boss, clock open nahi ho paaya: ${e.message}", "⚠️ Clock Error")
+                ActionResult(false, "Sir, clock open nahi ho paaya: ${e.message}", "⚠️ Clock Error")
             }
         }
 
@@ -264,7 +385,7 @@ object FridayActionExecutor {
             context.startActivity(intent)
             ActionResult(
                 success = true,
-                ttsMessage = "Alarm set for $formattedTime, Boss. Main waqt par aapko alert kar dungi.",
+                ttsMessage = "Alarm set for $formattedTime, Sir. Main waqt par aapko alert kar dungi.",
                 whisperMessage = "⏰ Alarm Set: $formattedTime"
             )
         } catch (e: Exception) {
@@ -278,14 +399,14 @@ object FridayActionExecutor {
                 context.startActivity(fallbackIntent)
                 ActionResult(
                     success = true,
-                    ttsMessage = "Alarm set for $formattedTime, Boss.",
+                    ttsMessage = "Alarm set for $formattedTime, Sir.",
                     whisperMessage = "⏰ Alarm: $formattedTime"
                 )
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to set alarm for $formattedTime", t)
                 ActionResult(
                     success = false,
-                    ttsMessage = "Boss, alarm set karne me dikkat aayi: ${t.message}",
+                    ttsMessage = "Sir, alarm set karne me dikkat aayi: ${t.message}",
                     whisperMessage = "⚠️ Alarm Set Error"
                 )
             }
@@ -337,25 +458,25 @@ object FridayActionExecutor {
         val isPause = lower.matches(Regex("""^(?:pause|stop|roko|gaana\s+roko|music\s+roko|gaana\s+pause|music\s+pause|band\s+karo)(?:\s+(?:karo|song|music))?$"""))
         if (isPause) {
             dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_PAUSE)
-            return ActionResult(true, "Music paused, Boss.", "⏸️ Music Paused")
+            return ActionResult(true, "Music paused, Sir.", "⏸️ Music Paused")
         }
 
         val isResume = lower.matches(Regex("""^(?:resume|unpause|play|gaana\s+chalao|music\s+chalao|gaana\s+play|music\s+play)(?:\s+(?:karo|song|music))?$"""))
         if (isResume) {
             dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_PLAY)
-            return ActionResult(true, "Resuming playback, Boss.", "▶️ Music Resumed")
+            return ActionResult(true, "Resuming playback, Sir.", "▶️ Music Resumed")
         }
 
         val isNext = lower.matches(Regex("""^(?:next|next\s+song|next\s+track|agla\s+gaana|change\s+song|skip|gaana\s+badlo)(?:\s+karo)?$"""))
         if (isNext) {
             dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_NEXT)
-            return ActionResult(true, "Skipping to next track, Boss.", "⏭️ Next Track")
+            return ActionResult(true, "Skipping to next track, Sir.", "⏭️ Next Track")
         }
 
         val isPrevious = lower.matches(Regex("""^(?:previous|previous\s+song|pichhla\s+gaana|pehle\s+wala\s+gaana|prev\s+track)(?:\s+karo)?$"""))
         if (isPrevious) {
             dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-            return ActionResult(true, "Playing previous track, Boss.", "⏮️ Previous Track")
+            return ActionResult(true, "Playing previous track, Sir.", "⏮️ Previous Track")
         }
 
         return null
@@ -443,14 +564,14 @@ object FridayActionExecutor {
 
             ActionResult(
                 success = true,
-                ttsMessage = "Playing $songQuery on YouTube, Boss.",
+                ttsMessage = "Playing $songQuery on YouTube, Sir.",
                 whisperMessage = "🎵 YouTube: $songQuery"
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch YouTube for: $songQuery", e)
             ActionResult(
                 success = false,
-                ttsMessage = "Boss, gaana play karne me dikkat aayi: ${e.message}",
+                ttsMessage = "Sir, gaana play karne me dikkat aayi: ${e.message}",
                 whisperMessage = "⚠️ Music playback error"
             )
         }
@@ -528,7 +649,7 @@ object FridayActionExecutor {
                     }
                     if (intent.resolveActivity(context.packageManager) != null) {
                         context.startActivity(intent)
-                        return ActionResult(true, "Opening Camera now, Boss.", "📷 Opening Camera")
+                        return ActionResult(true, "Opening Camera now, Sir.", "📷 Opening Camera")
                     }
                 }
                 "settings", "setting" -> {
@@ -536,7 +657,7 @@ object FridayActionExecutor {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     context.startActivity(intent)
-                    return ActionResult(true, "Opening Settings now, Boss.", "⚙️ Opening Settings")
+                    return ActionResult(true, "Opening Settings now, Sir.", "⚙️ Opening Settings")
                 }
                 "calculator", "calc", "hisaab" -> {
                     val intent = Intent().apply {
@@ -546,7 +667,7 @@ object FridayActionExecutor {
                     }
                     if (intent.resolveActivity(context.packageManager) != null) {
                         context.startActivity(intent)
-                        return ActionResult(true, "Opening Calculator, Boss.", "🔢 Opening Calculator")
+                        return ActionResult(true, "Opening Calculator, Sir.", "🔢 Opening Calculator")
                     }
                 }
                 "clock", "alarm", "ghadi" -> {
@@ -555,7 +676,7 @@ object FridayActionExecutor {
                     }
                     if (intent.resolveActivity(context.packageManager) != null) {
                         context.startActivity(intent)
-                        return ActionResult(true, "Opening Clock now, Boss.", "⏰ Opening Clock")
+                        return ActionResult(true, "Opening Clock now, Sir.", "⏰ Opening Clock")
                     }
                 }
                 "phone", "dialer", "call" -> {
@@ -563,7 +684,7 @@ object FridayActionExecutor {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     context.startActivity(intent)
-                    return ActionResult(true, "Opening Dialer, Boss.", "📞 Opening Phone")
+                    return ActionResult(true, "Opening Dialer, Sir.", "📞 Opening Phone")
                 }
             }
         } catch (e: Exception) {
@@ -584,13 +705,13 @@ object FridayActionExecutor {
                 val prettyName = displayName.replaceFirstChar { it.uppercase() }
                 ActionResult(
                     success = true,
-                    ttsMessage = "Opening $prettyName now, Boss.",
+                    ttsMessage = "Opening $prettyName now, Sir.",
                     whisperMessage = "🚀 Opening $prettyName"
                 )
             } else {
                 ActionResult(
                     success = false,
-                    ttsMessage = "Boss, $displayName app installed nahi mila.",
+                    ttsMessage = "Sir, $displayName app installed nahi mila.",
                     whisperMessage = "⚠️ $displayName not installed"
                 )
             }
@@ -598,7 +719,7 @@ object FridayActionExecutor {
             Log.e(TAG, "Failed launching package $packageName", e)
             ActionResult(
                 success = false,
-                ttsMessage = "Boss, app open karne me error aaya: ${e.message}",
+                ttsMessage = "Sir, app open karne me error aaya: ${e.message}",
                 whisperMessage = "⚠️ Launch error"
             )
         }

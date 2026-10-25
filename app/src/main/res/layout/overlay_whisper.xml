@@ -56,8 +56,43 @@
         android:layout_height="wrap_content"
         android:lineSpacingExtra="2dp"
         android:maxLines="5"
-        android:text="Boss, ye meme dekho..."
+        android:text="Sir, ye dekhiye..."
         android:textColor="#FFFFFF"
         android:textSize="13sp" />
+
+    <!-- In-Call / Incoming Call Interactive Action Row -->
+    <LinearLayout
+        android:id="@+id/layoutWhisperCallActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/btnWhisperProxyCall"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_status_pill"
+            android:gravity="center"
+            android:text="🤖 FRIDAY BAAT KARO"
+            android:textColor="@color/stark_cyan"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnWhisperAnswerCall"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_status_pill"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="📞 UTHAO"
+            android:textColor="@color/stark_gold"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </LinearLayout>
