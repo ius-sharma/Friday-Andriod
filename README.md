@@ -33,20 +33,27 @@
 - **Workflow Companion**: Offers tactical suggestions, debugging insights, or crisp summaries when learning, coding, or reading.
 - Converses naturally in expressive **Hinglish** (Hindi + English blend) with witty, sharp banter.
 
-### 🔮 3. Stark Nanotech Particle HUD & Floating Overlay
+### 🔮 3. Stark Nanotech Particle HUD & Living Arc Reactor Bubble
+- **Kinetic Arc Reactor Overlay**: Custom `FridayBubbleReactorView` with multi-ring rotation, breathing idle state, and live audio waveform reactive pulse when speaking.
 - **Holographic Floating Bubble**: Draggable, persistent floating orb with dynamic glow effects for idle, listening, processing, and speaking states.
 - **Nanotech Particle Canvas**: Custom Android `Canvas` rendering live particle physics and smooth audio waveform animations.
 - **Interactive Whisper & Response Cards**: Glassmorphism cards presenting concise AI responses and quick action shortcuts without blocking your screen.
 
-### ⚡ 4. Deep Device Automation (Action Engine)
+### ⚡ 4. Deep Device Automation & Natural Action Engine
 - Integrated with `FridayAccessibilityService` and package manager queries.
-- Direct voice commands for device actions:
+- **Natural Hindi/Hinglish Alarms & Timers**: Sets system alarms and timers with human phrasing (`"saadhe 7 baje ka alarm"`, `"sawa 8 baje"`, `"paune 10"`, `"15 minute ka timer"`).
+- **Direct App & Media Actions**:
   - Open applications dynamically (`[ACTION: OPEN_APP <app>]`)
   - Direct media playback (`[ACTION: PLAY_YOUTUBE <query>]`)
   - Smart field interaction, text typing, and navigation.
 
-### 🌤️ 5. Futuristic Cyber-HUD Home Screen Widget
-- Stark-styled 4x2 Home Screen Widget with live telemetry:
+### 🌅 5. Morning Briefing & Local Profile Sandbox
+- **Autonomous Morning Greeting**: Plays a smart, motivating tactical briefing on first device unlock (between 5 AM - 12 PM).
+- **Local Persona & Context Sandbox**: Personal user profile is stored 100% locally in private device storage, empowering Gemini with custom context while strictly respecting user privacy.
+
+### 🌤️ 6. Futuristic Cyber-HUD Home Screen Widget & Bento Dashboard
+- **Stark Bento Grid Dashboard**: Complete main console with live sentry states, doomscroll progress bars, system vitals (RAM & Battery), and instant action chips.
+- **Cyber-HUD 4x2 Home Screen Widget**:
   - Real-time weather data fetched from **Open-Meteo**.
   - **Dynamic Bezier Temperature Wave Graph**: Smooth hourly forecast curve rendered directly on a remote canvas.
   - Quick-action microphone button to summon Friday with a single tap.

@@ -39,3 +39,11 @@ kws-nonmobile/
 
 # Android Profiler & Captures
 captures/
+/*.png
+
+# Personal User Context & Secrets (STRICT LOCAL ONLY - NEVER COMMIT TO GIT)
+user_context.json
+personal_context.json
+*.private.json
+app/src/main/assets/user_context.json
+*.user_profile.txt
