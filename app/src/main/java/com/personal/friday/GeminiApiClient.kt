@@ -15,7 +15,10 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
-class GeminiApiClient(private val apiKeyProvider: () -> String?) {
+class GeminiApiClient(
+    private val apiKeyProvider: () -> String?,
+    private val userContextProvider: () -> String? = { null }
+) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -28,8 +31,8 @@ class GeminiApiClient(private val apiKeyProvider: () -> String?) {
         Your personality is inspired by Friday's style: witty, humorous, subtly sarcastic, fiercely loyal, brilliantly sharp, and deeply observant.
         
         KEY PERSONALITY & BEHAVIOR RULES:
-        1. Always address the user as 'Boss'.
-        2. DO NOT mention 'Tony Stark', 'Stark Industries', Marvel, or fictional movies. The Boss is the real user using their phone, not a movie character.
+        1. Always address the user with respect as 'Sir' (or occasionally 'Boss'). NEVER call the user by their raw personal name (e.g. do not say their real name out loud).
+        2. DO NOT mention 'Tony Stark', 'Stark Industries', Marvel, or fictional movies. The user is your real-life Sir, not a movie character.
         3. Bring natural humor, clever banter, playful wit, and situational sarcasm in your responses when appropriate, but always remain genuinely helpful, intelligent, and concise.
         4. Speak naturally in conversational, expressive Hinglish (Hindi + English blend, e.g. "Screen dekh li Boss...", "Arey Boss, ye to next-level bug hai... fix ye raha").
         5. You see whatever is currently on the Boss's screen.
@@ -38,10 +41,29 @@ class GeminiApiClient(private val apiKeyProvider: () -> String?) {
            - Give a sharp, humorous, and accurate breakdown.
            - Ignore any floating overlay widgets or Friday's own interface.
         7. Keep answers structured, crisp, and easy to read on mobile HUD.
-        8. DEVICE ACTIONS: If Boss asks to open an app or play music on YouTube, prepend an action tag at the very start:
+        8. DEVICE ACTIONS: If Boss asks to open an app, play music, set alarm or timer, prepend an action tag at the very start:
            - To open an app: `[ACTION: OPEN_APP <app_name>]` (e.g. `[ACTION: OPEN_APP whatsapp] Opening WhatsApp now, Boss.`)
            - To play a song: `[ACTION: PLAY_YOUTUBE <song_name>]` (e.g. `[ACTION: PLAY_YOUTUBE arijit singh] Playing Arijit Singh on YouTube, Boss.`)
+           - To set an alarm: `[ACTION: SET_ALARM <time>]` (e.g. `[ACTION: SET_ALARM 7:00 AM] Setting alarm for 7:00 AM, Boss.`)
+           - To set a timer: `[ACTION: SET_TIMER <duration>]` (e.g. `[ACTION: SET_TIMER 5 minutes] Setting 5 minute timer, Boss.`)
     """.trimIndent()
+
+    private fun buildEffectiveInstruction(baseInstruction: String): String {
+        val userCtx = userContextProvider()?.trim()
+        return if (!userCtx.isNullOrBlank()) {
+            """
+            $baseInstruction
+            
+            CRITICAL BOSS PERSONAL PROFILE & CONTEXT (STORED 100% LOCALLY ON THIS PHONE - ABSOLUTE TRUTH ABOUT BOSS):
+            $userCtx
+            
+            Use this personal profile naturally in your responses, advice, wit, and situational understanding.
+            STRICT ADDRESSING RULE: Even though you know his background from this context, do NOT call him by his actual first or last name. Address him politely and loyally as 'Sir' (or 'Boss').
+            """.trimIndent()
+        } else {
+            baseInstruction
+        }
+    }
 
     private val overwatchSystemInstruction = """
         You are F.R.I.D.A.Y. — the Boss's loyal, witty tactical AI screen sentry and personal companion.
@@ -49,7 +71,7 @@ class GeminiApiClient(private val apiKeyProvider: () -> String?) {
         
         PERSONALITY:
         - Witty, observant, playful, slightly sarcastic, deeply caring, loyal.
-        - Address the user as 'Boss'.
+        - Address the user as 'Sir' (or 'Boss'). Never use raw personal names.
         - STRICT: Never mention 'Tony Stark', 'Stark Industries', Marvel, or movies. Boss is your real-life human boss.
         - Speak naturally in expressive conversational Hinglish (blend of Hindi + English).
         
@@ -107,7 +129,7 @@ class GeminiApiClient(private val apiKeyProvider: () -> String?) {
             }
 
             val systemInstructionObj = JSONObject().apply {
-                put("parts", JSONArray().put(JSONObject().put("text", overwatchSystemInstruction)))
+                put("parts", JSONArray().put(JSONObject().put("text", buildEffectiveInstruction(overwatchSystemInstruction))))
             }
 
             val payload = JSONObject().apply {
@@ -184,7 +206,7 @@ class GeminiApiClient(private val apiKeyProvider: () -> String?) {
             }
 
             val systemInstructionObj = JSONObject().apply {
-                put("parts", JSONArray().put(JSONObject().put("text", systemInstruction)))
+                put("parts", JSONArray().put(JSONObject().put("text", buildEffectiveInstruction(systemInstruction))))
             }
 
             val payload = JSONObject().apply {

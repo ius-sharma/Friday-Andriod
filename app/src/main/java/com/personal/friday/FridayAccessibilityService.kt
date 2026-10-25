@@ -15,6 +15,8 @@ class FridayAccessibilityService : AccessibilityService() {
     private var lastExternalFocusedNode: AccessibilityNodeInfo? = null
     private var lastExternalPackage: String? = null
     private var lastScrollEventTime = 0L
+    private var lastContentChangeCheckTime = 0L
+    private var lastReelSignature = ""
 
     companion object {
         private const val TAG = "FridayAccessibility"
@@ -71,16 +73,50 @@ class FridayAccessibilityService : AccessibilityService() {
             }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 currentForegroundPackage = pkg
-                if (pkg == "com.instagram.android" || pkg == "com.google.android.youtube" || pkg == "com.facebook.katana") {
+                if (isSupportedReelPackage(pkg)) {
                     val now = System.currentTimeMillis()
                     if (now - lastScrollEventTime >= 1000L) {
-                        // Strict check: only count when actually inside Reels/Shorts (filter out normal home feed posts/photos)
                         if (isReelContext(event, pkg)) {
                             lastScrollEventTime = now
+                            val sig = extractReelSignature(event, pkg)
+                            if (sig.isNotBlank()) lastReelSignature = sig
                             Log.i(TAG, "Confirmed vertical Reel/Short scroll in $pkg -> Counted!")
                             FridayOverlayService.instance?.onReelDetected(pkg)
                         } else {
                             Log.d(TAG, "Standard feed/post scroll in $pkg (not a Reel). Ignored.")
+                        }
+                    }
+                }
+            }
+            AccessibilityEvent.TYPE_VIEW_SELECTED -> {
+                currentForegroundPackage = pkg
+                if (isSupportedReelPackage(pkg)) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastScrollEventTime >= 1000L) {
+                        if (isReelContext(event, pkg)) {
+                            lastScrollEventTime = now
+                            val sig = extractReelSignature(event, pkg)
+                            if (sig.isNotBlank()) lastReelSignature = sig
+                            Log.i(TAG, "Confirmed ViewPager2 page snap in $pkg -> Counted!")
+                            FridayOverlayService.instance?.onReelDetected(pkg)
+                        }
+                    }
+                }
+            }
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                currentForegroundPackage = pkg
+                if (isSupportedReelPackage(pkg)) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastScrollEventTime >= 1200L && now - lastContentChangeCheckTime >= 800L) {
+                        lastContentChangeCheckTime = now
+                        if (isReelContext(event, pkg)) {
+                            val sig = extractReelSignature(event, pkg)
+                            if (sig.isNotBlank() && sig != lastReelSignature) {
+                                lastReelSignature = sig
+                                lastScrollEventTime = now
+                                Log.i(TAG, "Confirmed new Reel signature in $pkg ($sig) -> Counted!")
+                                FridayOverlayService.instance?.onReelDetected(pkg)
+                            }
                         }
                     }
                 }
@@ -292,106 +328,163 @@ class FridayAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun isSupportedReelPackage(pkg: String): Boolean {
+        return pkg == "com.instagram.android" ||
+               pkg == "com.google.android.youtube" ||
+               pkg == "com.facebook.katana" ||
+               pkg == "com.facebook.lite" ||
+               pkg == "com.zhiliaoapp.musically" ||
+               pkg == "com.ss.android.ugc.trill" ||
+               pkg == "com.snapchat.android"
+    }
+
     private fun isReelContext(event: AccessibilityEvent, pkg: String): Boolean {
-        // 1. Direct event source check
+        // 1. Direct event source check (fastest, zero tree search)
         if (isReelEventDirect(event)) {
             return true
         }
 
-        val root = rootInActiveWindow ?: return false
+        val root = getTargetRoot(pkg) ?: return false
 
-        if (pkg == "com.instagram.android") {
-            // If the Home tab is currently selected and visible, the user is scrolling the main home feed
-            if (isInstagramHomeTabSelected(root)) {
-                return false
-            }
-
-            // If the Reels tab is selected and visible
-            if (isInstagramReelsTabSelected(root)) {
-                return true
-            }
-
-            // Full-screen clips/reels viewer is visible
-            if (hasVisibleReelSignatures(root, 0)) {
-                return true
-            }
-
-            return false
+        // 2. High priority: Check for explicit reel/short visual elements on screen
+        if (hasVisibleReelSignatures(root, 0)) {
+            return true
         }
 
-        if (pkg == "com.google.android.youtube") {
-            // If YouTube Home tab is selected and visible, this is normal feed
-            if (isYouTubeHomeTabSelected(root)) {
-                return false
-            }
-
-            // If YouTube Shorts tab or Shorts player is active
-            if (isYouTubeShortsActive(root)) {
-                return true
-            }
-
-            if (hasVisibleReelSignatures(root, 0)) {
-                return true
-            }
-
-            return false
+        // 3. Tab state check
+        if (pkg == "com.instagram.android" && isInstagramReelsTabSelected(root)) {
+            return true
         }
 
-        // Other apps (Facebook, TikTok)
-        return hasVisibleReelSignatures(root, 0)
+        if (pkg == "com.google.android.youtube" && isYouTubeShortsActive(root)) {
+            return true
+        }
+
+        return false
+    }
+
+    private fun getTargetRoot(pkg: String): AccessibilityNodeInfo? {
+        try {
+            val windowList = windows
+            if (!windowList.isNullOrEmpty()) {
+                for (window in windowList) {
+                    val root = window.root ?: continue
+                    val rPkg = root.packageName?.toString() ?: ""
+                    if (rPkg == pkg) {
+                        return root
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error inspecting windows list for reel context", e)
+        }
+        val active = rootInActiveWindow
+        if (active != null) {
+            val activePkg = active.packageName?.toString() ?: ""
+            if (activePkg != packageName && !activePkg.startsWith("com.personal.friday")) {
+                return active
+            }
+        }
+        return null
     }
 
     private fun isReelEventDirect(event: AccessibilityEvent): Boolean {
         val source = event.source ?: return false
         val resId = source.viewIdResourceName?.lowercase() ?: ""
         val desc = source.contentDescription?.toString()?.lowercase() ?: ""
+        val text = source.text?.toString()?.lowercase() ?: ""
 
+        if (text == "reels" || desc == "reels" || text == "shorts" || desc == "shorts" ||
+            text.contains("reels tab") || desc.contains("reels tab") ||
+            text.contains("shorts tab") || desc.contains("shorts tab")
+        ) {
+            return true
+        }
         if (resId.contains("clips_view_pager") ||
             resId.contains("clips_video_container") ||
             resId.contains("reel_viewer") ||
             resId.contains("shorts_player") ||
+            resId.contains("shorts_container") ||
             resId.contains("reel_recycler")
         ) {
             return true
         }
-        if (desc.contains("reels tab, selected") || desc.contains("selected, reels") || desc.startsWith("reel by")) {
+        if (desc.contains("reels") || desc.contains("shorts") || desc.contains("reel by") || desc.contains("like reel")) {
             return true
         }
-        if (desc.contains("shorts tab, selected") || desc.contains("selected, shorts") || desc.contains("like this short")) {
+        if (desc.contains("like this short") || desc.contains("dislike this short") || desc.contains("sound used in this short")) {
+            return true
+        }
+        if (desc.contains("original audio") || text.contains("original audio")) {
             return true
         }
         return false
     }
 
-    private fun isInstagramHomeTabSelected(root: AccessibilityNodeInfo): Boolean {
-        fun search(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-            if (node == null || depth > 7) return false
-            if (node.isVisibleToUser) {
-                val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-                val resId = node.viewIdResourceName?.lowercase() ?: ""
-                if (node.isSelected && (desc.contains("home") || desc.contains("feed"))) {
-                    return true
-                }
-                if (desc.contains("home tab, selected") || desc.contains("selected, home")) {
-                    return true
-                }
-                // Check if top Instagram logo/action bar header is visible (only present on home feed)
-                if (resId.contains("action_bar_inbox_button") || resId.contains("action_bar_title")) {
-                    return true
-                }
+    private fun hasVisibleReelSignatures(node: AccessibilityNodeInfo?, depth: Int): Boolean {
+        if (node == null || depth > 14) return false
+        if (node.isVisibleToUser) {
+            val resId = node.viewIdResourceName?.lowercase() ?: ""
+            val desc = node.contentDescription?.toString()?.lowercase() ?: ""
+            val text = node.text?.toString()?.lowercase() ?: ""
+
+            // 1. Explicit Reel / Shorts keywords in text or contentDescription
+            if (text == "reels" || desc == "reels" ||
+                text == "shorts" || desc == "shorts" ||
+                text.contains("reels tab") || desc.contains("reels tab") ||
+                text.contains("shorts tab") || desc.contains("shorts tab")
+            ) {
+                return true
             }
-            for (i in 0 until node.childCount.coerceAtMost(8)) {
-                val child = node.getChild(i) ?: continue
-                if (search(child, depth + 1)) return true
+
+            // 2. Reel / Short unique actions
+            if (desc.contains("like this short") ||
+                desc.contains("dislike this short") ||
+                desc.contains("sound used in this short") ||
+                desc.contains("comments for this short") ||
+                desc.contains("share this short") ||
+                desc.contains("reel by") ||
+                desc.contains("like reel") ||
+                desc.contains("remix with") ||
+                desc.contains("use template") ||
+                desc.contains("watch more reels") ||
+                desc.contains("open reels audio") ||
+                desc.contains("reels viewer")
+            ) {
+                return true
             }
-            return false
+
+            // 3. Audio & Music badges in Reels
+            if (text.contains("original audio") || desc.contains("original audio") ||
+                text.contains("audio is unavailable") || desc.contains("audio is unavailable")
+            ) {
+                return true
+            }
+
+            // 4. View IDs
+            if (resId.contains("clips_video_container") ||
+                resId.contains("clips_view_pager") ||
+                resId.contains("reel_viewer") ||
+                resId.contains("shorts_container") ||
+                resId.contains("shorts_player") ||
+                resId.contains("reel_player") ||
+                resId.contains("reel_recycler")
+            ) {
+                return true
+            }
         }
-        return search(root, 0)
+
+        val count = node.childCount.coerceAtMost(16)
+        for (i in 0 until count) {
+            val child = node.getChild(i) ?: continue
+            if (hasVisibleReelSignatures(child, depth + 1)) return true
+        }
+        return false
     }
 
     private fun isInstagramReelsTabSelected(root: AccessibilityNodeInfo): Boolean {
         fun search(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-            if (node == null || depth > 7) return false
+            if (node == null || depth > 10) return false
             if (node.isVisibleToUser) {
                 val desc = node.contentDescription?.toString()?.lowercase() ?: ""
                 if (node.isSelected && desc.contains("reel")) {
@@ -401,28 +494,8 @@ class FridayAccessibilityService : AccessibilityService() {
                     return true
                 }
             }
-            for (i in 0 until node.childCount.coerceAtMost(8)) {
-                val child = node.getChild(i) ?: continue
-                if (search(child, depth + 1)) return true
-            }
-            return false
-        }
-        return search(root, 0)
-    }
-
-    private fun isYouTubeHomeTabSelected(root: AccessibilityNodeInfo): Boolean {
-        fun search(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-            if (node == null || depth > 7) return false
-            if (node.isVisibleToUser) {
-                val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-                if (node.isSelected && (desc.contains("home") || desc.contains("subscriptions"))) {
-                    return true
-                }
-                if (desc.contains("home tab, selected") || desc.contains("subscriptions tab, selected")) {
-                    return true
-                }
-            }
-            for (i in 0 until node.childCount.coerceAtMost(8)) {
+            val count = node.childCount.coerceAtMost(10)
+            for (i in 0 until count) {
                 val child = node.getChild(i) ?: continue
                 if (search(child, depth + 1)) return true
             }
@@ -433,7 +506,7 @@ class FridayAccessibilityService : AccessibilityService() {
 
     private fun isYouTubeShortsActive(root: AccessibilityNodeInfo): Boolean {
         fun search(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-            if (node == null || depth > 7) return false
+            if (node == null || depth > 10) return false
             if (node.isVisibleToUser) {
                 val desc = node.contentDescription?.toString()?.lowercase() ?: ""
                 val resId = node.viewIdResourceName?.lowercase() ?: ""
@@ -447,7 +520,8 @@ class FridayAccessibilityService : AccessibilityService() {
                     return true
                 }
             }
-            for (i in 0 until node.childCount.coerceAtMost(8)) {
+            val count = node.childCount.coerceAtMost(10)
+            for (i in 0 until count) {
                 val child = node.getChild(i) ?: continue
                 if (search(child, depth + 1)) return true
             }
@@ -456,41 +530,38 @@ class FridayAccessibilityService : AccessibilityService() {
         return search(root, 0)
     }
 
-    private fun hasVisibleReelSignatures(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-        if (node == null || depth > 7) return false
-        if (node.isVisibleToUser) {
-            val resId = node.viewIdResourceName?.lowercase() ?: ""
-            val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-            val text = node.text?.toString()?.lowercase() ?: ""
-
-            if (resId.contains("clips_video_container") ||
-                resId.contains("clips_view_pager") ||
-                resId.contains("reel_viewer") ||
-                resId.contains("shorts_container") ||
-                resId.contains("shorts_player")
-            ) {
-                return true
-            }
-
-            if (desc.startsWith("reel by") ||
-                desc.contains("like reel") ||
-                desc.contains("remix with") ||
-                desc.contains("use template") ||
-                desc.contains("like this short") ||
-                desc.contains("dislike this short")
-            ) {
-                return true
-            }
-
-            if (text.contains("original audio") || desc.contains("original audio")) {
-                return true
-            }
+    private fun extractReelSignature(event: AccessibilityEvent, pkg: String): String {
+        // Fast path: event text or content description
+        val evtDesc = event.contentDescription?.toString()?.trim() ?: ""
+        if (evtDesc.contains("reel by", ignoreCase = true) || evtDesc.contains("like this short", ignoreCase = true)) {
+            return evtDesc
         }
 
-        for (i in 0 until node.childCount.coerceAtMost(8)) {
-            val child = node.getChild(i) ?: continue
-            if (hasVisibleReelSignatures(child, depth + 1)) return true
+        // Secondary: Find distinct reel title/author node in target window
+        val root = getTargetRoot(pkg) ?: rootInActiveWindow ?: return ""
+        fun findSig(node: AccessibilityNodeInfo?, depth: Int): String {
+            if (node == null || depth > 9) return ""
+            if (node.isVisibleToUser) {
+                val desc = node.contentDescription?.toString()?.trim() ?: ""
+                if (desc.startsWith("reel by", ignoreCase = true) ||
+                    desc.contains("like this short along with", ignoreCase = true) ||
+                    desc.contains("sound used in this short", ignoreCase = true)
+                ) {
+                    return desc
+                }
+                val text = node.text?.toString()?.trim() ?: ""
+                if (text.startsWith("@") && text.length in 3..35) {
+                    return text
+                }
+            }
+            val count = node.childCount.coerceAtMost(10)
+            for (i in 0 until count) {
+                val child = node.getChild(i) ?: continue
+                val res = findSig(child, depth + 1)
+                if (res.isNotEmpty()) return res
+            }
+            return ""
         }
-        return false
+        return findSig(root, 0)
     }
 }

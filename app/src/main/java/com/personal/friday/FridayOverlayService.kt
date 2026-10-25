@@ -1,6 +1,9 @@
 package com.personal.friday
 
 import android.annotation.SuppressLint
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,6 +33,8 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.EditText
 import android.widget.ImageButton
@@ -46,6 +51,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import kotlin.math.abs
 
 class FridayOverlayService : Service() {
@@ -84,18 +93,20 @@ class FridayOverlayService : Service() {
 
     // Doomscroll Protocol (Reel Sentry) state
     private var isDoomscrollEnabled = true
-    private var doomscrollReelCount = 0
+    internal var doomscrollReelCount = 0
     private var lastReelChangeTime = 0L
     private var hasCountedCurrentReel = false
     private var lastReelFingerprint: ReelFingerprint? = null
     private var lastReelAppLeaveTime = 0L
     private var doomscrollCooldownUntil = 0L
+    private var lastReelDetectedTimestamp = 0L
 
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
                     Log.d("FridayOverlayService", "Screen OFF: Entering True Auto-Sleep (Mic OFF, Sentry Loop Paused)")
+                    bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)?.pauseAnimationLoop()
                     try {
                         hotwordSpotter.pause()
                     } catch (t: Throwable) {
@@ -105,6 +116,7 @@ class FridayOverlayService : Service() {
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     Log.d("FridayOverlayService", "Screen ON: Resuming Wake Word & Sentry...")
+                    bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)?.resumeAnimationLoop()
                     if (isWakeWordEnabled && isRunning) {
                         mainHandler.postDelayed({
                             startWakeWordListeningIfAllowed()
@@ -113,6 +125,10 @@ class FridayOverlayService : Service() {
                     if (isOverwatchEnabled && isRunning) {
                         startOverwatchLoop()
                     }
+                }
+                Intent.ACTION_USER_PRESENT -> {
+                    Log.d("FridayOverlayService", "Device UNLOCKED: Checking for morning greeting...")
+                    checkAndTriggerMorningGreeting(isManualTest = false)
                 }
             }
         }
@@ -143,12 +159,39 @@ class FridayOverlayService : Service() {
             isDoomscrollEnabled = prefs.getBoolean("doomscroll_enabled", true)
             isWakeWordEnabled = prefs.getBoolean("wakeword_enabled", true)
 
-            geminiClient = GeminiApiClient {
-                getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
-                    .getString("gemini_api_key", null)
-            }
+            geminiClient = GeminiApiClient(
+                apiKeyProvider = {
+                    getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                        .getString("gemini_api_key", null)
+                },
+                userContextProvider = {
+                    getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                        .getString("user_personal_context", null)
+                }
+            )
 
-            ttsManager = TtsManager(this)
+            ttsManager = TtsManager(this).apply {
+                onSpeakingListener = { isSpeaking ->
+                    val reactor = bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)
+                    reactor?.setSpeaking(isSpeaking)
+                    val glow = bubbleView?.findViewById<View>(R.id.bubbleGlow)
+                    if (isSpeaking) {
+                        glow?.animate()
+                            ?.alpha(0.65f)
+                            ?.scaleX(1.22f)
+                            ?.scaleY(1.22f)
+                            ?.setDuration(300)
+                            ?.start()
+                    } else {
+                        glow?.animate()
+                            ?.alpha(0.28f)
+                            ?.scaleX(1.0f)
+                            ?.scaleY(1.0f)
+                            ?.setDuration(400)
+                            ?.start()
+                    }
+                }
+            }
 
             speechManager = SpeechManager(
                 context = this,
@@ -204,6 +247,7 @@ class FridayOverlayService : Service() {
             val screenFilter = IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
             }
             registerReceiver(screenStateReceiver, screenFilter)
 
@@ -275,6 +319,9 @@ class FridayOverlayService : Service() {
                     }
                     ACTION_TRIGGER_LISTENING -> {
                         handleWakeWordTriggered("widget")
+                    }
+                    ACTION_TRIGGER_MORNING_GREETING -> {
+                        checkAndTriggerMorningGreeting(isManualTest = true)
                     }
                 }
             }
@@ -381,9 +428,24 @@ class FridayOverlayService : Service() {
 
     private fun snapBubbleToEdge() {
         val middle = screenSize.x / 2
-        val targetX = if (bubbleParams.x >= middle) screenSize.x - 130 else 10
-        bubbleParams.x = targetX
-        windowManager.updateViewLayout(bubbleView, bubbleParams)
+        val bubbleWidth = bubbleView?.width?.takeIf { it > 0 } ?: (42 * resources.displayMetrics.density).toInt()
+        val targetX = if (bubbleParams.x >= middle) screenSize.x - bubbleWidth - 10 else 10
+        val startX = bubbleParams.x
+
+        if (startX != targetX) {
+            val snapAnim = ValueAnimator.ofInt(startX, targetX).apply {
+                duration = 200L
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { va ->
+                    bubbleParams.x = va.animatedValue as Int
+                    try {
+                        windowManager.updateViewLayout(bubbleView, bubbleParams)
+                    } catch (_: Exception) {}
+                }
+            }
+            snapAnim.start()
+        }
+
         if (isWhisperVisible) {
             hideWhisper()
         }
@@ -768,6 +830,8 @@ class FridayOverlayService : Service() {
                             when (actionType) {
                                 "OPEN_APP" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "open $actionParam")
                                 "PLAY_YOUTUBE" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "play $actionParam on youtube")
+                                "SET_ALARM" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "alarm laga do $actionParam")
+                                "SET_TIMER" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "timer laga do $actionParam")
                             }
                         }
                         lastResponseText = response
@@ -871,13 +935,23 @@ class FridayOverlayService : Service() {
 
                 val foregroundPkg = getForegroundAppPackage()
                 val isInReelApp = foregroundPkg != null && REEL_PACKAGES.contains(foregroundPkg)
+                val isFridayApp = foregroundPkg != null && (foregroundPkg == packageName || foregroundPkg.startsWith("com.personal.friday"))
 
-                if (isInReelApp) {
+                if (isInReelApp || isFridayApp) {
                     lastReelAppLeaveTime = 0L
+                    // Vision Reel Sentry check when screenCaptureManager is armed
+                    if (isInReelApp && isDoomscrollEnabled && screenCaptureManager != null) {
+                        val captureManager = screenCaptureManager
+                        val frame = captureManager?.captureScreen()
+                        if (frame != null) {
+                            processReelFrame(frame)
+                            frame.recycle()
+                        }
+                    }
                 } else {
                     if (lastReelAppLeaveTime == 0L) {
                         lastReelAppLeaveTime = System.currentTimeMillis()
-                    } else if (System.currentTimeMillis() - lastReelAppLeaveTime > 45_000L && doomscrollReelCount > 0) {
+                    } else if (System.currentTimeMillis() - lastReelAppLeaveTime > 15 * 60 * 1000L && doomscrollReelCount > 0) {
                         doomscrollReelCount = 0
                         lastReelFingerprint = null
                         withContext(Dispatchers.Main) {
@@ -940,23 +1014,32 @@ class FridayOverlayService : Service() {
     fun onReelDetected(pkg: String) {
         if (!isDoomscrollEnabled) return
         val now = System.currentTimeMillis()
+        if (now - lastReelDetectedTimestamp < 1200L) {
+            Log.d("FridayDoomscroll", "Reel counted too rapidly (${now - lastReelDetectedTimestamp}ms), debouncing duplicate.")
+            return
+        }
+        lastReelDetectedTimestamp = now
         lastReelAppLeaveTime = 0L
-        doomscrollReelCount++
-        Log.i("FridayDoomscroll", "Accessibility Reel counted ($pkg): $doomscrollReelCount / 10")
+
+        if (doomscrollReelCount >= 10) {
+            doomscrollReelCount = 1
+        } else {
+            doomscrollReelCount++
+        }
+        Log.i("FridayDoomscroll", "Reel counted ($pkg): $doomscrollReelCount / 10")
 
         mainHandler.post {
             updateReelCounterUI(true)
-            // Show sleek HUD Whisper badge so the user gets instant visual confirmation!
-            if (!isCardVisible) {
-                showWhisper("🎬 Reel #$doomscrollReelCount / 10")
-            }
+            pulseBubbleGlow()
 
             if (doomscrollReelCount >= 10) {
-                doomscrollReelCount = 0
-                updateReelCounterUI(true)
                 if (now >= doomscrollCooldownUntil) {
-                    doomscrollCooldownUntil = now + 60_000L
+                    doomscrollCooldownUntil = now + 45_000L
                     triggerDoomscrollAlert()
+                }
+            } else {
+                if (!isCardVisible) {
+                    showWhisper("🎬 Reel #$doomscrollReelCount / 10", 2500L)
                 }
             }
         }
@@ -989,24 +1072,10 @@ class FridayOverlayService : Service() {
             } else {
                 // User stayed on current reel
                 val dwell = now - lastReelChangeTime
-                if (dwell >= 3500L && !hasCountedCurrentReel) {
+                if (dwell >= 3000L && !hasCountedCurrentReel) {
                     hasCountedCurrentReel = true
-                    doomscrollReelCount++
-                    Log.d("FridayDoomscroll", "Reel counted: $doomscrollReelCount")
-                    withContext(Dispatchers.Main) {
-                        updateReelCounterUI(true)
-                    }
-
-                    if (doomscrollReelCount >= 10) {
-                        doomscrollReelCount = 0
-                        withContext(Dispatchers.Main) {
-                            updateReelCounterUI(true)
-                            if (now >= doomscrollCooldownUntil) {
-                                doomscrollCooldownUntil = now + 60_000L
-                                triggerDoomscrollAlert()
-                            }
-                        }
-                    }
+                    val pkg = getForegroundAppPackage() ?: "reel_app"
+                    onReelDetected(pkg)
                 }
             }
         } catch (e: Exception) {
@@ -1015,12 +1084,62 @@ class FridayOverlayService : Service() {
     }
 
     private fun triggerDoomscrollAlert() {
-        // Option A: Glow pulse Arc Reactor
         pulseBubbleGlow()
-        // Option A: Pop up Whisper Bubble
-        showWhisper("Boss, 10 reels complete! Focus wapas laane ka time hai.")
-        // Option B: Vocal quip spoken via TtsManager
+        showWhisper("⚠️ Boss, 10 reels complete! Focus wapas laane ka time hai.", 6500L)
         ttsManager.speak("Boss, 10 reels complete ho chuki hain. Dopamine levels peak par hain, aapke real goals ko aapke focus ki zaroorat hai... phone side me rakhiye.")
+    }
+
+    fun checkAndTriggerMorningGreeting(isManualTest: Boolean = false) {
+        val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+        val isEnabled = prefs.getBoolean("morning_greeting_enabled", true)
+        if (!isEnabled && !isManualTest) {
+            Log.d("FridayOverlayService", "Morning greeting is disabled in settings.")
+            return
+        }
+
+        val cal = Calendar.getInstance()
+        val hour = cal.get(Calendar.HOUR_OF_DAY)
+
+        val isMorning = hour in 5..11
+        if (!isMorning && !isManualTest) {
+            Log.d("FridayOverlayService", "Not morning hour ($hour:00). Skipping morning briefing.")
+            return
+        }
+
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val lastGreetDate = prefs.getString("last_morning_greet_date", "")
+
+        if (lastGreetDate == today && !isManualTest) {
+            Log.d("FridayOverlayService", "Morning greeting already delivered today ($today).")
+            return
+        }
+
+        if (!isManualTest) {
+            prefs.edit().putString("last_morning_greet_date", today).apply()
+        }
+
+        val greetingText = when {
+            isManualTest -> "Good morning, Sir! All systems initialized and online. Today's protocols are armed and ready. Let's make today productive."
+            hour in 5..8 -> "Good morning, Sir! Early start today. All cybernetic systems are online and primed. Ready when you are."
+            else -> "Good morning, Sir! All systems initialized and online. Hope you had a great sleep. Ready for today's mission."
+        }
+
+        Log.i("FridayOverlayService", "Triggering Morning Greeting for Sir: \"$greetingText\"")
+        mainHandler.post {
+            pulseBubbleGlow()
+            showWhisper("🌅 Good Morning, Sir! All systems online.", 5500L)
+            mainHandler.postDelayed({
+                if (isRunning) {
+                    ttsManager.speak(greetingText)
+                }
+            }, 600)
+        }
+    }
+
+    private fun extractBossNameFromContext(context: String): String? {
+        if (context.isBlank()) return null
+        val nameMatch = Regex("""(?:name|naam|boss|called)\s*[:=-]\s*([a-zA-Z]+)""", RegexOption.IGNORE_CASE).find(context)
+        return nameMatch?.groupValues?.get(1)?.trim()?.replaceFirstChar { it.uppercase() }
     }
 
     private fun updateReelCounterUI(isInReelApp: Boolean = false) {
@@ -1152,6 +1271,7 @@ class FridayOverlayService : Service() {
     }
 
     private fun pulseBubbleGlow() {
+        bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)?.triggerPulse()
         val glow = bubbleView?.findViewById<View>(R.id.bubbleGlow) ?: return
         glow.animate()
             .scaleX(1.45f)
@@ -1182,7 +1302,7 @@ class FridayOverlayService : Service() {
             }.start()
     }
 
-    private fun showWhisper(remark: String) {
+    private fun showWhisper(remark: String, durationMs: Long = 6500L) {
         val tvWhisper = whisperView?.findViewById<TextView>(R.id.tvWhisperContent)
         tvWhisper?.text = remark
 
@@ -1214,8 +1334,7 @@ class FridayOverlayService : Service() {
         isWhisperVisible = true
 
         mainHandler.removeCallbacks(whisperDismissRunnable)
-        // Auto-dismiss after 6.5 seconds
-        mainHandler.postDelayed(whisperDismissRunnable, 6500)
+        mainHandler.postDelayed(whisperDismissRunnable, durationMs)
     }
 
     private fun hideWhisper() {
@@ -1281,6 +1400,7 @@ class FridayOverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)?.stopAnimationLoop()
         overwatchJob?.cancel()
         mainHandler.removeCallbacks(whisperDismissRunnable)
         serviceScope.cancel()
@@ -1321,6 +1441,7 @@ class FridayOverlayService : Service() {
         const val ACTION_UPDATE_DOOMSCROLL = "com.personal.friday.ACTION_UPDATE_DOOMSCROLL"
         const val ACTION_UPDATE_WAKEWORD = "com.personal.friday.ACTION_UPDATE_WAKEWORD"
         const val ACTION_TRIGGER_LISTENING = "com.personal.friday.ACTION_TRIGGER_LISTENING"
+        const val ACTION_TRIGGER_MORNING_GREETING = "com.personal.friday.ACTION_TRIGGER_MORNING_GREETING"
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_DATA = "extra_data"
         const val EXTRA_OVERWATCH_ENABLED = "extra_overwatch_enabled"
@@ -1331,8 +1452,10 @@ class FridayOverlayService : Service() {
             "com.instagram.android",
             "com.google.android.youtube",
             "com.facebook.katana",
+            "com.facebook.lite",
             "com.zhiliaoapp.musically",
-            "com.ss.android.ugc.trill"
+            "com.ss.android.ugc.trill",
+            "com.snapchat.android"
         )
     }
 }

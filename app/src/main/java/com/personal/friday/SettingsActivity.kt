@@ -32,6 +32,12 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvDoomscrollState: TextView
     private lateinit var switchWakeWord: SwitchCompat
     private lateinit var tvWakeWordState: TextView
+    private lateinit var switchMorningGreeting: SwitchCompat
+    private lateinit var tvMorningGreetingState: TextView
+    private lateinit var btnTestMorningGreeting: Button
+    private lateinit var etUserContext: EditText
+    private lateinit var btnSaveUserContext: Button
+    private lateinit var btnDefaultUserContext: Button
     private lateinit var tvUsageAccessPrompt: TextView
 
     private val overlayPermissionLauncher = registerForActivityResult(
@@ -75,6 +81,12 @@ class SettingsActivity : AppCompatActivity() {
         tvDoomscrollState = findViewById(R.id.tvDoomscrollState)
         switchWakeWord = findViewById(R.id.switchWakeWord)
         tvWakeWordState = findViewById(R.id.tvWakeWordState)
+        switchMorningGreeting = findViewById(R.id.switchMorningGreeting)
+        tvMorningGreetingState = findViewById(R.id.tvMorningGreetingState)
+        btnTestMorningGreeting = findViewById(R.id.btnTestMorningGreeting)
+        etUserContext = findViewById(R.id.etUserContext)
+        btnSaveUserContext = findViewById(R.id.btnSaveUserContext)
+        btnDefaultUserContext = findViewById(R.id.btnDefaultUserContext)
         tvUsageAccessPrompt = findViewById(R.id.tvUsageAccessPrompt)
 
         val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
@@ -125,6 +137,43 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 startService(updateIntent)
             }
+        }
+
+        val isMorningGreetingEnabled = prefs.getBoolean("morning_greeting_enabled", true)
+        switchMorningGreeting.isChecked = isMorningGreetingEnabled
+        updateMorningGreetingText(isMorningGreetingEnabled)
+
+        switchMorningGreeting.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("morning_greeting_enabled", isChecked).apply()
+            updateMorningGreetingText(isChecked)
+        }
+
+        btnTestMorningGreeting.setOnClickListener {
+            if (FridayOverlayService.isRunning) {
+                FridayOverlayService.instance?.checkAndTriggerMorningGreeting(isManualTest = true)
+                Toast.makeText(this, "🌅 Morning Briefing triggered, Sir!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Sir, initialize Friday Overlay first to hear the morning briefing.", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        loadSavedUserContext()
+
+        btnSaveUserContext.setOnClickListener {
+            val contextText = etUserContext.text.toString().trim()
+            prefs.edit().putString("user_personal_context", contextText).apply()
+            Toast.makeText(this, "🔒 Sir, personal profile securely locked in local storage.", Toast.LENGTH_SHORT).show()
+        }
+
+        btnDefaultUserContext.setOnClickListener {
+            val template = """
+Role: Android & AI Specialist
+Focus: Developing F.R.I.D.A.Y. Cybernetic System
+Daily Goals: Sleep before 1 AM, code daily, limit doomscrolling to 15 mins
+Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procrastinate
+            """.trimIndent()
+            etUserContext.setText(template)
+            Toast.makeText(this, "Template loaded. Tap SAVE PROFILE to store.", Toast.LENGTH_SHORT).show()
         }
 
         tvUsageAccessPrompt.setOnClickListener {
@@ -243,6 +292,24 @@ class SettingsActivity : AppCompatActivity() {
         } else {
             tvWakeWordState.text = "Status: ACTIVE • Say 'Friday' or 'Hey Friday'"
             tvWakeWordState.setTextColor(getColor(R.color.stark_cyan))
+        }
+    }
+
+    private fun updateMorningGreetingText(enabled: Boolean) {
+        if (!enabled) {
+            tvMorningGreetingState.text = "Status: DISABLED (Paused)"
+            tvMorningGreetingState.setTextColor(getColor(R.color.stark_text_dim))
+        } else {
+            tvMorningGreetingState.text = "Status: ACTIVE • Greets on first unlock (5 AM - 12 PM)"
+            tvMorningGreetingState.setTextColor(getColor(R.color.stark_cyan))
+        }
+    }
+
+    private fun loadSavedUserContext() {
+        val savedContext = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+            .getString("user_personal_context", "")
+        if (!savedContext.isNullOrBlank()) {
+            etUserContext.setText(savedContext)
         }
     }
 
