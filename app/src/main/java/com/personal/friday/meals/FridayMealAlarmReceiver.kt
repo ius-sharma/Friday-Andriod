@@ -15,6 +15,9 @@ import androidx.core.app.NotificationCompat
 import com.personal.friday.FridayOverlayService
 import com.personal.friday.MainActivity
 import com.personal.friday.R
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class FridayMealAlarmReceiver : BroadcastReceiver() {
 
@@ -37,7 +40,7 @@ class FridayMealAlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             FridayMealScheduler.ACTION_MEAL_ALERT -> {
-                // 1. Acquire short wake lock (4 seconds) so device processes audio/vitals reliably
+                // 1. Acquire short wake lock (4.5 seconds) so device processes audio/vitals reliably
                 val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
                 val wakeLock = powerManager?.newWakeLock(
                     PowerManager.PARTIAL_WAKE_LOCK,
@@ -48,8 +51,21 @@ class FridayMealAlarmReceiver : BroadcastReceiver() {
                 // 2. Play Signature F.R.I.D.A.Y. Cyber Alert Chime
                 playSignatureAlertTone()
 
+                val prefs = context.getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
                 // 3. Generate dynamic voice line
-                val dialogue = MealDialogueGenerator.getNextDialogue(context, mealType)
+                val dialogue = if (mealType.equals(MealDialogueGenerator.MEAL_BREAKFAST_CHECK, ignoreCase = true)) {
+                    val lastBreakfastDate = prefs.getString("last_breakfast_confirmed_date", "")
+                    if (lastBreakfastDate == today) {
+                        "Sir, subah ke 8 baj gaye hain. Aapne nashta pehle hi kar liya tha, awesome! Ab full focus ke sath aaj ke targets achieve karte hain."
+                    } else {
+                        MealDialogueGenerator.getNextDialogue(context, mealType)
+                    }
+                } else {
+                    MealDialogueGenerator.getNextDialogue(context, mealType)
+                }
+
                 val mealName = MealDialogueGenerator.getMealDisplayName(mealType)
 
                 // 4. If Friday Overlay Service is active, display Whisper HUD & Speak
@@ -108,9 +124,9 @@ class FridayMealAlarmReceiver : BroadcastReceiver() {
 
                 // 6. If this was a regular meal alert (not a snooze), schedule it for tomorrow
                 if (!isSnooze) {
-                    val prefs = context.getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
                     val timePrefKey = when (mealType.uppercase()) {
                         MealDialogueGenerator.MEAL_BREAKFAST -> FridayMealScheduler.PREF_BREAKFAST_TIME
+                        MealDialogueGenerator.MEAL_BREAKFAST_CHECK -> FridayMealScheduler.PREF_BREAKFAST_CHECK_TIME
                         MealDialogueGenerator.MEAL_LUNCH -> FridayMealScheduler.PREF_LUNCH_TIME
                         MealDialogueGenerator.MEAL_SNACKS -> FridayMealScheduler.PREF_SNACKS_TIME
                         MealDialogueGenerator.MEAL_DINNER -> FridayMealScheduler.PREF_DINNER_TIME
@@ -118,6 +134,7 @@ class FridayMealAlarmReceiver : BroadcastReceiver() {
                     }
                     val defaultTime = when (mealType.uppercase()) {
                         MealDialogueGenerator.MEAL_BREAKFAST -> FridayMealScheduler.DEFAULT_BREAKFAST
+                        MealDialogueGenerator.MEAL_BREAKFAST_CHECK -> FridayMealScheduler.DEFAULT_BREAKFAST_CHECK
                         MealDialogueGenerator.MEAL_LUNCH -> FridayMealScheduler.DEFAULT_LUNCH
                         MealDialogueGenerator.MEAL_SNACKS -> FridayMealScheduler.DEFAULT_SNACKS
                         MealDialogueGenerator.MEAL_DINNER -> FridayMealScheduler.DEFAULT_DINNER
@@ -130,6 +147,13 @@ class FridayMealAlarmReceiver : BroadcastReceiver() {
 
             FridayMealScheduler.ACTION_MEAL_CONFIRM -> {
                 notificationManager.cancel(notifId)
+                val prefs = context.getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                if (mealType.equals(MealDialogueGenerator.MEAL_BREAKFAST, ignoreCase = true) ||
+                    mealType.equals(MealDialogueGenerator.MEAL_BREAKFAST_CHECK, ignoreCase = true)) {
+                    prefs.edit().putString("last_breakfast_confirmed_date", today).apply()
+                }
+
                 FridayOverlayService.instance?.let { overlay ->
                     val confirmMsg = "Great Sir! Core fuel replenished. Back to peak focus."
                     overlay.showWhisper(confirmMsg, 4000L)
@@ -176,9 +200,10 @@ class FridayMealAlarmReceiver : BroadcastReceiver() {
     private fun getMealIndex(mealType: String): Int {
         return when (mealType.uppercase()) {
             MealDialogueGenerator.MEAL_BREAKFAST -> 1
-            MealDialogueGenerator.MEAL_LUNCH -> 2
-            MealDialogueGenerator.MEAL_SNACKS -> 3
-            MealDialogueGenerator.MEAL_DINNER -> 4
+            MealDialogueGenerator.MEAL_BREAKFAST_CHECK -> 2
+            MealDialogueGenerator.MEAL_LUNCH -> 3
+            MealDialogueGenerator.MEAL_SNACKS -> 4
+            MealDialogueGenerator.MEAL_DINNER -> 5
             else -> 0
         }
     }

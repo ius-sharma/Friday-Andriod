@@ -56,6 +56,8 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvBioFuelState: TextView
     private lateinit var rowBreakfastTime: LinearLayout
     private lateinit var tvBreakfastTime: TextView
+    private lateinit var rowBreakfastCheckTime: LinearLayout
+    private lateinit var tvBreakfastCheckTime: TextView
     private lateinit var rowLunchTime: LinearLayout
     private lateinit var tvLunchTime: TextView
     private lateinit var rowSnacksTime: LinearLayout
@@ -127,6 +129,8 @@ class SettingsActivity : AppCompatActivity() {
         tvBioFuelState = findViewById(R.id.tvBioFuelState)
         rowBreakfastTime = findViewById(R.id.rowBreakfastTime)
         tvBreakfastTime = findViewById(R.id.tvBreakfastTime)
+        rowBreakfastCheckTime = findViewById(R.id.rowBreakfastCheckTime)
+        tvBreakfastCheckTime = findViewById(R.id.tvBreakfastCheckTime)
         rowLunchTime = findViewById(R.id.rowLunchTime)
         tvLunchTime = findViewById(R.id.tvLunchTime)
         rowSnacksTime = findViewById(R.id.rowSnacksTime)
@@ -420,11 +424,13 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
         updateBioFuelText(isBioFuelEnabled)
 
         val bTime = prefs.getString(FridayMealScheduler.PREF_BREAKFAST_TIME, FridayMealScheduler.DEFAULT_BREAKFAST) ?: FridayMealScheduler.DEFAULT_BREAKFAST
+        val bCheckTime = prefs.getString(FridayMealScheduler.PREF_BREAKFAST_CHECK_TIME, FridayMealScheduler.DEFAULT_BREAKFAST_CHECK) ?: FridayMealScheduler.DEFAULT_BREAKFAST_CHECK
         val lTime = prefs.getString(FridayMealScheduler.PREF_LUNCH_TIME, FridayMealScheduler.DEFAULT_LUNCH) ?: FridayMealScheduler.DEFAULT_LUNCH
         val sTime = prefs.getString(FridayMealScheduler.PREF_SNACKS_TIME, FridayMealScheduler.DEFAULT_SNACKS) ?: FridayMealScheduler.DEFAULT_SNACKS
         val dTime = prefs.getString(FridayMealScheduler.PREF_DINNER_TIME, FridayMealScheduler.DEFAULT_DINNER) ?: FridayMealScheduler.DEFAULT_DINNER
 
         tvBreakfastTime.text = bTime
+        tvBreakfastCheckTime.text = bCheckTime
         tvLunchTime.text = lTime
         tvSnacksTime.text = sTime
         tvDinnerTime.text = dTime
@@ -434,7 +440,7 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
             updateBioFuelText(isChecked)
             if (isChecked) {
                 FridayMealScheduler.scheduleAllMeals(this)
-                Toast.makeText(this, "Bio-Fuel Sentry active. 4 daily meal alerts set, Sir.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Bio-Fuel Sentry active. Meal & check-in alerts set, Sir.", Toast.LENGTH_SHORT).show()
             } else {
                 FridayMealScheduler.cancelAllMeals(this)
                 Toast.makeText(this, "Bio-Fuel Sentry paused, Sir.", Toast.LENGTH_SHORT).show()
@@ -443,6 +449,10 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
 
         rowBreakfastTime.setOnClickListener {
             showMealTimePicker(MealDialogueGenerator.MEAL_BREAKFAST, tvBreakfastTime, FridayMealScheduler.PREF_BREAKFAST_TIME)
+        }
+
+        rowBreakfastCheckTime.setOnClickListener {
+            showMealTimePicker(MealDialogueGenerator.MEAL_BREAKFAST_CHECK, tvBreakfastCheckTime, FridayMealScheduler.PREF_BREAKFAST_CHECK_TIME)
         }
 
         rowLunchTime.setOnClickListener {
@@ -464,7 +474,7 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
 
     private fun updateBioFuelText(enabled: Boolean) {
         if (enabled) {
-            tvBioFuelState.text = "ONLINE • 4 DAILY ALERTS"
+            tvBioFuelState.text = "ONLINE • 5 DAILY ALERTS & CHECKS"
             tvBioFuelState.setTextColor(getColor(R.color.stark_gold))
         } else {
             tvBioFuelState.text = "Status: STANDBY (Disabled)"
@@ -494,7 +504,8 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
     private fun triggerTestMealAlert() {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val mealType = when (hour) {
-            in 5..10 -> MealDialogueGenerator.MEAL_BREAKFAST
+            in 5..7 -> MealDialogueGenerator.MEAL_BREAKFAST
+            in 8..10 -> MealDialogueGenerator.MEAL_BREAKFAST_CHECK
             in 11..15 -> MealDialogueGenerator.MEAL_LUNCH
             in 16..18 -> MealDialogueGenerator.MEAL_SNACKS
             else -> MealDialogueGenerator.MEAL_DINNER

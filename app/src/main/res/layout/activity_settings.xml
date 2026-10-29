@@ -543,11 +543,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:lineSpacingExtra="2dp"
-                    android:text="Friday alerts you 4 times daily for meals. Every alert features signature chime audio and unique, non-repeating dynamic voice lines addressing you as Sir."
+                    android:text="Friday alerts you for meals and follow-ups. Every alert features signature chime audio and unique, non-repeating dynamic voice lines addressing you as Sir."
                     android:textColor="@color/stark_text_dim"
                     android:textSize="11sp" />
 
-                <!-- 4 Meal Windows Row Grid -->
+                <!-- Meal & Follow-up Windows Row Grid -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -578,7 +578,37 @@
                             android:background="@drawable/bg_status_pill"
                             android:paddingHorizontal="10dp"
                             android:paddingVertical="4dp"
-                            android:text="09:00"
+                            android:text="07:00"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Breakfast Check / Follow-up Row -->
+                    <LinearLayout
+                        android:id="@+id/rowBreakfastCheckTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="⏰ Breakfast Check (Follow-up)"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvBreakfastCheckTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_status_pill"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="08:00"
                             android:textColor="@color/stark_gold"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -668,7 +698,7 @@
                             android:background="@drawable/bg_status_pill"
                             android:paddingHorizontal="10dp"
                             android:paddingVertical="4dp"
-                            android:text="21:00"
+                            android:text="19:30"
                             android:textColor="@color/stark_gold"
                             android:textSize="12sp"
                             android:textStyle="bold" />

@@ -21,21 +21,24 @@ object FridayMealScheduler {
 
     const val PREF_MEAL_ENABLED = "meal_alerts_enabled"
     const val PREF_BREAKFAST_TIME = "meal_breakfast_time"
+    const val PREF_BREAKFAST_CHECK_TIME = "meal_breakfast_check_time"
     const val PREF_LUNCH_TIME = "meal_lunch_time"
     const val PREF_SNACKS_TIME = "meal_snacks_time"
     const val PREF_DINNER_TIME = "meal_dinner_time"
 
-    const val DEFAULT_BREAKFAST = "09:00"
+    const val DEFAULT_BREAKFAST = "07:00"
+    const val DEFAULT_BREAKFAST_CHECK = "08:00"
     const val DEFAULT_LUNCH = "13:30"
     const val DEFAULT_SNACKS = "17:30"
-    const val DEFAULT_DINNER = "21:00"
+    const val DEFAULT_DINNER = "19:30"
 
     private fun getRequestCode(mealType: String): Int {
         return when (mealType.uppercase()) {
             MealDialogueGenerator.MEAL_BREAKFAST -> 1001
-            MealDialogueGenerator.MEAL_LUNCH -> 1002
-            MealDialogueGenerator.MEAL_SNACKS -> 1003
-            MealDialogueGenerator.MEAL_DINNER -> 1004
+            MealDialogueGenerator.MEAL_BREAKFAST_CHECK -> 1002
+            MealDialogueGenerator.MEAL_LUNCH -> 1003
+            MealDialogueGenerator.MEAL_SNACKS -> 1004
+            MealDialogueGenerator.MEAL_DINNER -> 1005
             else -> 1000
         }
     }
@@ -53,15 +56,17 @@ object FridayMealScheduler {
 
         val prefs = context.getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
         val breakfast = prefs.getString(PREF_BREAKFAST_TIME, DEFAULT_BREAKFAST) ?: DEFAULT_BREAKFAST
+        val breakfastCheck = prefs.getString(PREF_BREAKFAST_CHECK_TIME, DEFAULT_BREAKFAST_CHECK) ?: DEFAULT_BREAKFAST_CHECK
         val lunch = prefs.getString(PREF_LUNCH_TIME, DEFAULT_LUNCH) ?: DEFAULT_LUNCH
         val snacks = prefs.getString(PREF_SNACKS_TIME, DEFAULT_SNACKS) ?: DEFAULT_SNACKS
         val dinner = prefs.getString(PREF_DINNER_TIME, DEFAULT_DINNER) ?: DEFAULT_DINNER
 
         scheduleSingleMeal(context, MealDialogueGenerator.MEAL_BREAKFAST, breakfast)
+        scheduleSingleMeal(context, MealDialogueGenerator.MEAL_BREAKFAST_CHECK, breakfastCheck)
         scheduleSingleMeal(context, MealDialogueGenerator.MEAL_LUNCH, lunch)
         scheduleSingleMeal(context, MealDialogueGenerator.MEAL_SNACKS, snacks)
         scheduleSingleMeal(context, MealDialogueGenerator.MEAL_DINNER, dinner)
-        Log.i(TAG, "All 4 daily Bio-Fuel meal alerts scheduled successfully.")
+        Log.i(TAG, "All 5 daily Bio-Fuel meal & check-in alerts scheduled successfully.")
     }
 
     fun scheduleSingleMeal(context: Context, mealType: String, timeString: String) {
@@ -162,6 +167,7 @@ object FridayMealScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val list = listOf(
             MealDialogueGenerator.MEAL_BREAKFAST,
+            MealDialogueGenerator.MEAL_BREAKFAST_CHECK,
             MealDialogueGenerator.MEAL_LUNCH,
             MealDialogueGenerator.MEAL_SNACKS,
             MealDialogueGenerator.MEAL_DINNER
