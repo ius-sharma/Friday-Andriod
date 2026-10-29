@@ -1,9 +1,12 @@
 package com.personal.friday
 
 import android.app.AppOpsManager
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -11,12 +14,17 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import com.personal.friday.meals.FridayMealScheduler
+import com.personal.friday.meals.MealDialogueGenerator
+import java.util.Calendar
+import java.util.Locale
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -43,6 +51,18 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvBatteryOptimizationStatus: TextView
     private lateinit var btnDisableBatteryRestrictions: Button
     private lateinit var btnTestCallProxyIntro: Button
+
+    private lateinit var switchBioFuel: SwitchCompat
+    private lateinit var tvBioFuelState: TextView
+    private lateinit var rowBreakfastTime: LinearLayout
+    private lateinit var tvBreakfastTime: TextView
+    private lateinit var rowLunchTime: LinearLayout
+    private lateinit var tvLunchTime: TextView
+    private lateinit var rowSnacksTime: LinearLayout
+    private lateinit var tvSnacksTime: TextView
+    private lateinit var rowDinnerTime: LinearLayout
+    private lateinit var tvDinnerTime: TextView
+    private lateinit var btnTestBioFuelAlert: Button
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -102,6 +122,20 @@ class SettingsActivity : AppCompatActivity() {
         tvBatteryOptimizationStatus = findViewById(R.id.tvBatteryOptimizationStatus)
         btnDisableBatteryRestrictions = findViewById(R.id.btnDisableBatteryRestrictions)
         btnTestCallProxyIntro = findViewById(R.id.btnTestCallProxyIntro)
+
+        switchBioFuel = findViewById(R.id.switchBioFuel)
+        tvBioFuelState = findViewById(R.id.tvBioFuelState)
+        rowBreakfastTime = findViewById(R.id.rowBreakfastTime)
+        tvBreakfastTime = findViewById(R.id.tvBreakfastTime)
+        rowLunchTime = findViewById(R.id.rowLunchTime)
+        tvLunchTime = findViewById(R.id.tvLunchTime)
+        rowSnacksTime = findViewById(R.id.rowSnacksTime)
+        tvSnacksTime = findViewById(R.id.tvSnacksTime)
+        rowDinnerTime = findViewById(R.id.rowDinnerTime)
+        tvDinnerTime = findViewById(R.id.tvDinnerTime)
+        btnTestBioFuelAlert = findViewById(R.id.btnTestBioFuelAlert)
+
+        setupBioFuelSettings()
 
         btnDisableBatteryRestrictions.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -377,6 +411,113 @@ Behavior Rules: Keep me accountable, be witty and slightly sarcastic if I procra
             tvDoomscrollState.text = "Status: DISABLED (Paused)"
             tvDoomscrollState.setTextColor(getColor(R.color.stark_text_dim))
         }
+    }
+
+    private fun setupBioFuelSettings() {
+        val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+        val isBioFuelEnabled = prefs.getBoolean(FridayMealScheduler.PREF_MEAL_ENABLED, true)
+        switchBioFuel.isChecked = isBioFuelEnabled
+        updateBioFuelText(isBioFuelEnabled)
+
+        val bTime = prefs.getString(FridayMealScheduler.PREF_BREAKFAST_TIME, FridayMealScheduler.DEFAULT_BREAKFAST) ?: FridayMealScheduler.DEFAULT_BREAKFAST
+        val lTime = prefs.getString(FridayMealScheduler.PREF_LUNCH_TIME, FridayMealScheduler.DEFAULT_LUNCH) ?: FridayMealScheduler.DEFAULT_LUNCH
+        val sTime = prefs.getString(FridayMealScheduler.PREF_SNACKS_TIME, FridayMealScheduler.DEFAULT_SNACKS) ?: FridayMealScheduler.DEFAULT_SNACKS
+        val dTime = prefs.getString(FridayMealScheduler.PREF_DINNER_TIME, FridayMealScheduler.DEFAULT_DINNER) ?: FridayMealScheduler.DEFAULT_DINNER
+
+        tvBreakfastTime.text = bTime
+        tvLunchTime.text = lTime
+        tvSnacksTime.text = sTime
+        tvDinnerTime.text = dTime
+
+        switchBioFuel.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(FridayMealScheduler.PREF_MEAL_ENABLED, isChecked).apply()
+            updateBioFuelText(isChecked)
+            if (isChecked) {
+                FridayMealScheduler.scheduleAllMeals(this)
+                Toast.makeText(this, "Bio-Fuel Sentry active. 4 daily meal alerts set, Sir.", Toast.LENGTH_SHORT).show()
+            } else {
+                FridayMealScheduler.cancelAllMeals(this)
+                Toast.makeText(this, "Bio-Fuel Sentry paused, Sir.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        rowBreakfastTime.setOnClickListener {
+            showMealTimePicker(MealDialogueGenerator.MEAL_BREAKFAST, tvBreakfastTime, FridayMealScheduler.PREF_BREAKFAST_TIME)
+        }
+
+        rowLunchTime.setOnClickListener {
+            showMealTimePicker(MealDialogueGenerator.MEAL_LUNCH, tvLunchTime, FridayMealScheduler.PREF_LUNCH_TIME)
+        }
+
+        rowSnacksTime.setOnClickListener {
+            showMealTimePicker(MealDialogueGenerator.MEAL_SNACKS, tvSnacksTime, FridayMealScheduler.PREF_SNACKS_TIME)
+        }
+
+        rowDinnerTime.setOnClickListener {
+            showMealTimePicker(MealDialogueGenerator.MEAL_DINNER, tvDinnerTime, FridayMealScheduler.PREF_DINNER_TIME)
+        }
+
+        btnTestBioFuelAlert.setOnClickListener {
+            triggerTestMealAlert()
+        }
+    }
+
+    private fun updateBioFuelText(enabled: Boolean) {
+        if (enabled) {
+            tvBioFuelState.text = "ONLINE • 4 DAILY ALERTS"
+            tvBioFuelState.setTextColor(getColor(R.color.stark_gold))
+        } else {
+            tvBioFuelState.text = "Status: STANDBY (Disabled)"
+            tvBioFuelState.setTextColor(getColor(R.color.stark_text_dim))
+        }
+    }
+
+    private fun showMealTimePicker(mealType: String, timeView: TextView, prefKey: String) {
+        val curr = timeView.text.toString()
+        val parts = curr.split(":")
+        val h = parts.getOrNull(0)?.toIntOrNull() ?: 12
+        val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+
+        TimePickerDialog(this, { _, hourOfDay, minute ->
+            val formatted = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute)
+            timeView.text = formatted
+            getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putString(prefKey, formatted)
+                .apply()
+
+            FridayMealScheduler.scheduleSingleMeal(this, mealType, formatted)
+            Toast.makeText(this, "${MealDialogueGenerator.getMealDisplayName(mealType)} alert set for $formatted, Sir.", Toast.LENGTH_SHORT).show()
+        }, h, m, true).show()
+    }
+
+    private fun triggerTestMealAlert() {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val mealType = when (hour) {
+            in 5..10 -> MealDialogueGenerator.MEAL_BREAKFAST
+            in 11..15 -> MealDialogueGenerator.MEAL_LUNCH
+            in 16..18 -> MealDialogueGenerator.MEAL_SNACKS
+            else -> MealDialogueGenerator.MEAL_DINNER
+        }
+
+        // 1. Signature Chime
+        try {
+            val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 85)
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP2, 280)
+        } catch (_: Exception) {}
+
+        // 2. Dynamic Dialogue Line
+        val dialogue = MealDialogueGenerator.getNextDialogue(this, mealType)
+
+        if (FridayOverlayService.isRunning && FridayOverlayService.instance != null) {
+            FridayOverlayService.instance?.triggerMealAlert(mealType, dialogue)
+        } else {
+            val tts = TtsManager(this)
+            tts.onReadyListener = {
+                tts.speak(dialogue)
+            }
+        }
+        Toast.makeText(this, "🍲 Bio-Fuel test alert triggered for ${MealDialogueGenerator.getMealDisplayName(mealType)}, Sir!", Toast.LENGTH_SHORT).show()
     }
 
     private fun updateWakeWordText(enabled: Boolean) {

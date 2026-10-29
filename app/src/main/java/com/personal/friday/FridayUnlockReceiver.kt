@@ -90,6 +90,10 @@ class FridayUnlockReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 val wasEnabled = prefs.getBoolean("friday_enabled", false)
                 Log.i(TAG, "System event $action. wasEnabled=$wasEnabled")
+
+                // Reschedule daily Bio-Fuel meal alarms
+                com.personal.friday.meals.FridayMealScheduler.scheduleAllMeals(context)
+
                 if (wasEnabled && !FridayOverlayService.isRunning) {
                     try {
                         val startIntent = Intent(context, FridayOverlayService::class.java)

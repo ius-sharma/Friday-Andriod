@@ -26,6 +26,23 @@ class SpeechManager(
     private var isUserWantingToListen = false
     private var retryCount = 0
 
+    // Watchdog to prevent indefinite hang on "Initializing mic..." if Phone Management / OEM Call Recorder locks the audio hardware
+    private val micInitTimeoutRunnable = Runnable {
+        if (isUserWantingToListen) {
+            Log.w("SpeechManager", "Mic initialization timed out after 4500ms. Hardware mic likely locked by OEM Phone Management.")
+            isUserWantingToListen = false
+            onListeningStateChanged?.invoke(false)
+            try {
+                speechRecognizer?.cancel()
+            } catch (_: Exception) {}
+            if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
+                onError("Sir, mic lock hai. Phone Dialer se 'Auto Call Recording' off kijiye.")
+            } else {
+                onError("Sir, mic audio stream busy hai. Ek baar retry kijiye.")
+            }
+        }
+    }
+
     var onListeningStateChanged: ((Boolean) -> Unit)? = null
     var onCallerBargeIn: (() -> Unit)? = null
 
@@ -75,6 +92,7 @@ class SpeechManager(
 
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
+                    mainHandler.removeCallbacks(micInitTimeoutRunnable)
                     if (!isUserWantingToListen) return
                     Log.d("SpeechManager", "onReadyForSpeech: Mic is hot and listening")
                     retryCount = 0
@@ -107,6 +125,7 @@ class SpeechManager(
                 }
 
                 override fun onError(error: Int) {
+                    mainHandler.removeCallbacks(micInitTimeoutRunnable)
                     Log.e("SpeechManager", "onError code: $error, isUserWantingToListen=$isUserWantingToListen, isProxy=${com.personal.friday.telephony.FridayTelephonyManager.isProxyActive}")
                     // If user closed or cancelled the mic, ignore all errors and NEVER restart
                     if (!isUserWantingToListen) {
@@ -164,6 +183,7 @@ class SpeechManager(
                 }
 
                 override fun onResults(results: Bundle?) {
+                    mainHandler.removeCallbacks(micInitTimeoutRunnable)
                     if (!isUserWantingToListen) return
                     isUserWantingToListen = false
                     onListeningStateChanged?.invoke(false)
@@ -228,11 +248,14 @@ class SpeechManager(
     private fun doStartListening() {
         if (!isUserWantingToListen) return
         try {
+            mainHandler.removeCallbacks(micInitTimeoutRunnable)
+            mainHandler.postDelayed(micInitTimeoutRunnable, 4500L)
             val intent = buildRecognizerIntent()
             speechRecognizer?.startListening(intent)
             onStatus("Initializing mic...")
             onListeningStateChanged?.invoke(true)
         } catch (e: Exception) {
+            mainHandler.removeCallbacks(micInitTimeoutRunnable)
             Log.e("SpeechManager", "Error in doStartListening", e)
             initRecognizer()
             mainHandler.postDelayed({
@@ -249,6 +272,7 @@ class SpeechManager(
 
     fun stopListening() {
         mainHandler.post {
+            mainHandler.removeCallbacks(micInitTimeoutRunnable)
             isUserWantingToListen = false
             mainHandler.removeCallbacksAndMessages(null)
             onListeningStateChanged?.invoke(false)
@@ -263,6 +287,7 @@ class SpeechManager(
 
     fun release() {
         mainHandler.post {
+            mainHandler.removeCallbacks(micInitTimeoutRunnable)
             isUserWantingToListen = false
             mainHandler.removeCallbacksAndMessages(null)
             onListeningStateChanged?.invoke(false)

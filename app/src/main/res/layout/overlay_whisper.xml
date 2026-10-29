@@ -95,4 +95,39 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- Bio-Fuel / Meal Alert Interactive Action Row -->
+    <LinearLayout
+        android:id="@+id/layoutWhisperMealActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/btnWhisperMealDone"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_status_pill"
+            android:gravity="center"
+            android:text="✅ KHA LIYA"
+            android:textColor="#00E676"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnWhisperMealSnooze"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_status_pill"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="⏳ 15M SNOOZE"
+            android:textColor="#FFB300"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
 </LinearLayout>

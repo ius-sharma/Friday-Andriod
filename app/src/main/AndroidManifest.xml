@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -124,6 +127,17 @@
                 <action android:name="android.intent.action.USER_PRESENT" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- F.R.I.D.A.Y. Bio-Fuel 4-Time Meal Alert Alarm Broadcast Receiver -->
+        <receiver
+            android:name=".meals.FridayMealAlarmReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.personal.friday.ACTION_MEAL_ALERT" />
+                <action android:name="com.personal.friday.ACTION_MEAL_SNOOZE" />
+                <action android:name="com.personal.friday.ACTION_MEAL_CONFIRM" />
             </intent-filter>
         </receiver>
 

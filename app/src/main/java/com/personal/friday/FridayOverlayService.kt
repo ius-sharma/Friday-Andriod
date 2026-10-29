@@ -300,6 +300,11 @@ class FridayOverlayService : Service() {
             startOverwatchLoop()
             setupTelephonyMonitoring()
             try {
+                com.personal.friday.meals.FridayMealScheduler.scheduleAllMeals(this)
+            } catch (e: Exception) {
+                Log.w("FridayOverlayService", "Failed to schedule meal alerts on start", e)
+            }
+            try {
                 com.personal.friday.widget.FridayHudWidgetProvider.updateAllWidgets(this)
             } catch (_: Exception) {}
             Log.i("FridayOverlayService", "FridayOverlayService onCreate finished successfully!")
@@ -546,6 +551,23 @@ class FridayOverlayService : Service() {
         whisperView?.findViewById<View>(R.id.btnWhisperAnswerCall)?.setOnClickListener {
             hideWhisper()
             com.personal.friday.telephony.FridayTelephonyManager.acceptCall(this)
+        }
+
+        whisperView?.findViewById<View>(R.id.btnWhisperMealDone)?.setOnClickListener {
+            hideWhisper()
+            val confirmMsg = "Great Sir! Core fuel replenished. Back to peak focus."
+            showWhisper(confirmMsg, 4000L)
+            ttsManager.speak(confirmMsg)
+        }
+
+        whisperView?.findViewById<View>(R.id.btnWhisperMealSnooze)?.setOnClickListener {
+            hideWhisper()
+            activeMealType?.let { meal ->
+                com.personal.friday.meals.FridayMealScheduler.snoozeMeal(this, meal, 15)
+            }
+            val snoozeMsg = "Sir, 15 minute ka snooze set kar diya hai."
+            showWhisper(snoozeMsg, 3500L)
+            ttsManager.speak(snoozeMsg)
         }
 
         whisperView?.setOnClickListener {
@@ -1538,12 +1560,31 @@ class FridayOverlayService : Service() {
             }.start()
     }
 
-    fun showWhisper(remark: String, durationMs: Long = 6500L, showCallActions: Boolean = false) {
+    private var activeMealType: String? = null
+
+    fun triggerMealAlert(mealType: String, dialogue: String) {
+        activeMealType = mealType
+        mainHandler.post {
+            pulseBubbleGlow()
+            showWhisper(dialogue, durationMs = 15000L, showCallActions = false, showMealActions = true)
+            ttsManager.speak(dialogue)
+        }
+    }
+
+    fun showWhisper(
+        remark: String,
+        durationMs: Long = 6500L,
+        showCallActions: Boolean = false,
+        showMealActions: Boolean = false
+    ) {
         val tvWhisper = whisperView?.findViewById<TextView>(R.id.tvWhisperContent)
         tvWhisper?.text = remark
 
         val callActions = whisperView?.findViewById<View>(R.id.layoutWhisperCallActions)
         callActions?.visibility = if (showCallActions) View.VISIBLE else View.GONE
+
+        val mealActions = whisperView?.findViewById<View>(R.id.layoutWhisperMealActions)
+        mealActions?.visibility = if (showMealActions) View.VISIBLE else View.GONE
 
         val density = resources.displayMetrics.density
         val whisperWidthApprox = (240 * density).toInt()
@@ -1581,6 +1622,7 @@ class FridayOverlayService : Service() {
         isWhisperVisible = false
         mainHandler.removeCallbacks(whisperDismissRunnable)
         whisperView?.findViewById<View>(R.id.layoutWhisperCallActions)?.visibility = View.GONE
+        whisperView?.findViewById<View>(R.id.layoutWhisperMealActions)?.visibility = View.GONE
         whisperView?.animate()
             ?.alpha(0f)
             ?.scaleX(0.85f)

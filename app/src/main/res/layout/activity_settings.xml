@@ -490,6 +490,207 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <!-- BIO-FUEL PROTOCOL (4-Time Meal Alert Sentry) -->
+            <LinearLayout
+                android:id="@+id/cardBioFuel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_hud_card"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.08"
+                            android:text="BIO-FUEL PROTOCOL (MEAL SENTRY)"
+                            android:textColor="@color/stark_cyan"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvBioFuelState"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="ONLINE • 4 DAILY ALERTS"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchBioFuel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Friday alerts you 4 times daily for meals. Every alert features signature chime audio and unique, non-repeating dynamic voice lines addressing you as Sir."
+                    android:textColor="@color/stark_text_dim"
+                    android:textSize="11sp" />
+
+                <!-- 4 Meal Windows Row Grid -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical">
+
+                    <!-- Breakfast Row -->
+                    <LinearLayout
+                        android:id="@+id/rowBreakfastTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🌅 Breakfast (Nashta)"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvBreakfastTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_status_pill"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="09:00"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Lunch Row -->
+                    <LinearLayout
+                        android:id="@+id/rowLunchTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="☀️ Lunch (Dopahar ka Khana)"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvLunchTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_status_pill"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="13:30"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Evening Snacks Row -->
+                    <LinearLayout
+                        android:id="@+id/rowSnacksTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="☕ Snacks (Shaam ki Chai)"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvSnacksTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_status_pill"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="17:30"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Dinner Row -->
+                    <LinearLayout
+                        android:id="@+id/rowDinnerTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🌙 Dinner (Raat ka Khana)"
+                            android:textColor="@color/stark_text_white"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvDinnerTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_status_pill"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="21:00"
+                            android:textColor="@color/stark_gold"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTestBioFuelAlert"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="12dp"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/stark_cyan"
+                    app:strokeWidth="1dp"
+                    android:text="TEST MEAL ALERT NOW"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <!-- Personal User Context & Neural Profile Card -->
             <LinearLayout
                 android:id="@+id/cardPersonalContext"
