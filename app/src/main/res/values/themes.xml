@@ -6,4 +6,14 @@
         <item name="android:statusBarColor">@color/stark_bg_dark</item>
         <item name="android:windowBackground">@color/stark_bg_dark</item>
     </style>
+
+    <style name="Theme.Friday.BottomSheetDialog" parent="Theme.Design.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Theme.Friday.BottomSheet</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:navigationBarColor">#161616</item>
+    </style>
+
+    <style name="Theme.Friday.BottomSheet" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@drawable/bg_cyber_bottom_sheet</item>
+    </style>
 </resources>

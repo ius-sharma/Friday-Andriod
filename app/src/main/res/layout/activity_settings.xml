@@ -1,819 +1,614 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/stark_bg_dark"
-    android:orientation="vertical">
+    android:fillViewport="true">
 
-    <!-- Top Action Bar -->
-    <RelativeLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:background="#101010"
-        android:paddingHorizontal="16dp">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="24dp">
 
-        <ImageButton
-            android:id="@+id/btnBack"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            android:src="@drawable/ic_back_arrow" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginStart="8dp"
-            android:layout_toEndOf="@id/btnBack"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-black"
-                android:letterSpacing="0.12"
-                android:text="SYSTEM PROTOCOLS"
-                android:textColor="@color/stark_cyan"
-                android:textSize="17sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:letterSpacing="0.05"
-                android:text="ODDSOCEAN CONFIGURATION MATRIX"
-                android:textColor="@color/stark_text_dim"
-                android:textSize="10sp" />
-        </LinearLayout>
-    </RelativeLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
-
+        <!-- Top Header Navigation Bar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <!-- System Permissions & Hardware Card -->
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_button_ripple"
+                android:contentDescription="Back"
+                android:padding="8dp"
+                android:src="@drawable/ic_back_arrow" />
+
             <LinearLayout
-                android:id="@+id/cardStatus"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_hud_card"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
                 android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:letterSpacing="0.1"
-                    android:text="HARDWARE &amp; ACCESS PERMISSIONS"
-                    android:textColor="@color/stark_gold"
-                    android:textSize="12sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.08"
+                    android:text="F.R.I.D.A.Y. COMMAND"
+                    android:textColor="@color/stark_text_white"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/tvOverlayPermissionStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="• Overlay Permission: Checking..."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="13sp" />
+                    android:layout_marginTop="1dp"
+                    android:letterSpacing="0.04"
+                    android:text="CYBERNETIC SENTRIES &amp; CONTROL"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Status Reactor Indicator -->
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="Arc Status"
+                android:src="@drawable/ic_friday_bubble" />
+        </LinearLayout>
+
+        <!-- System Vitals & Diagnostics Strip -->
+        <LinearLayout
+            android:id="@+id/cardStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_hud_card"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:id="@+id/tvMicPermissionStatus"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="• Microphone Access: Checking..."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvAccessibilityPermissionStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="• Auto-Type (Accessibility): Checking..."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvTelephonyPermissionStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="• Calling &amp; Contacts: Checking..."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="13sp" />
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.06"
+                    android:text="SYSTEM HARDWARE VITALS"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvBatteryOptimizationStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="• Overnight Run (No Battery Limits): Checking..."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="13sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnDisableBatteryRestrictions"
-                    android:layout_width="match_parent"
-                    android:layout_height="46dp"
-                    android:layout_marginTop="12dp"
-                    app:cornerRadius="10dp"
-                    app:backgroundTint="#FF6D00"
-                    android:text="DISABLE BATTERY LIMITS (RUN OVERNIGHT)"
-                    android:textColor="#000000"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <!-- API Key Configuration Card -->
-            <LinearLayout
-                android:id="@+id/cardApiKey"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:letterSpacing="0.1"
-                    android:text="TACTICAL AI CORE KEY (GEMINI)"
-                    android:textColor="@color/stark_cyan"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <EditText
-                    android:id="@+id/etApiKey"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_input_field"
-                    android:hint="@string/api_key_hint"
-                    android:inputType="textPassword"
-                    android:paddingHorizontal="14dp"
-                    android:textColor="@color/stark_text_white"
-                    android:textColorHint="@color/stark_text_dim"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSaveApiKey"
-                    android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="10dp"
-                    app:cornerRadius="10dp"
-                    app:backgroundTint="#FF6D00"
-                    android:text="@string/save_api_key"
-                    android:textColor="#000000"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <!-- Stark Overwatch (Auto Screen Sentry) Card -->
-            <LinearLayout
-                android:id="@+id/cardOverwatch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:layout_toStartOf="@id/switchOverwatch"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.1"
-                            android:text="FRIDAY SENTRY (OVERWATCH)"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvOverwatchState"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Status: Active • Observes memes and insights"
-                            android:textColor="@color/stark_text_dim"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchOverwatch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:checked="true" />
-                </RelativeLayout>
-
-                <TextView
-                    android:id="@+id/tvUsageAccessPrompt"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="• Auto-Pauses when on Home Screen or phone locked.\n• Speaks up only when finding funny memes, tech breakthroughs, or inspiration."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <!-- Doomscroll Protocol Card -->
-            <LinearLayout
-                android:id="@+id/cardDoomscroll"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:layout_toStartOf="@id/switchDoomscroll"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.1"
-                            android:text="DOOMSCROLL PROTOCOL"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvDoomscrollState"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Status: Armed • Limits 10 consecutive reels"
-                            android:textColor="@color/stark_text_dim"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchDoomscroll"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:checked="true" />
-                </RelativeLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="• Tracks reel swipe counts on Instagram, Shorts &amp; Facebook.\n• Intervenes with vocal quip &amp; whisper after 10 continuous reels."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <!-- Voice Wake Word Card -->
-            <LinearLayout
-                android:id="@+id/cardWakeWord"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:layout_toStartOf="@id/switchWakeWord"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.1"
-                            android:text="HANDS-FREE CALL WORD (WAKE WORD)"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvWakeWordState"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Status: ACTIVE • Say 'Friday' or 'Hey Friday'"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchWakeWord"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:checked="true" />
-                </RelativeLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:lineSpacingExtra="3dp"
-                    android:text="• 100% Free &amp; Offline — Zero API keys required!\n• Just say 'Friday' or 'Hey Friday' anywhere on your phone.\n• Arc Reactor will wake up asking: 'Yes Sir?'"
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <!-- Morning First-Unlock Briefing Card -->
-            <LinearLayout
-                android:id="@+id/cardMorningGreeting"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:layout_toStartOf="@id/switchMorningGreeting"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.1"
-                            android:text="MORNING FIRST-UNLOCK BRIEFING"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvMorningGreetingState"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Status: ACTIVE • Greets on first unlock (5 AM - 12 PM)"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchMorningGreeting"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:checked="true" />
-                </RelativeLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="• Delivers a vocal morning greeting when you first unlock your device in the morning.\n• Arc Reactor pulses and Friday briefs you with your custom name and status."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTestMorningGreeting"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="8dp"
-                    app:cornerRadius="8dp"
-                    app:strokeColor="@color/stark_cyan"
-                    app:strokeWidth="1dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:text="TEST MORNING BRIEFING"
-                    android:textColor="@color/stark_cyan"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <!-- Autonomous In-Call Proxy Agent Card -->
-            <LinearLayout
-                android:id="@+id/cardCallProxy"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:letterSpacing="0.1"
-                        android:text="AUTONOMOUS IN-CALL PROXY AGENT"
-                        android:textColor="@color/stark_gold"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </RelativeLayout>
-
-                <TextView
-                    android:id="@+id/tvCallProxyState"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Status: ACTIVE • Speaks on Sir's Behalf (&lt;300ms)"
-                    android:textColor="@color/stark_cyan"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:lineSpacingExtra="3dp"
-                    android:text="• Say: &quot;Friday, Rahul ko call lagao&quot; or &quot;Call 9876543210&quot; to dial.\n• When phone rings, say &quot;Friday, tum mere behalf pe baat kar lo&quot; or &quot;Call uthao&quot;.\n• Friday auto-answers, enables speakerphone, introduces herself politely, takes messages, and uses instant barge-in if interrupted.\n• Disconnecting automatically briefs you with caller summary."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTestCallProxyIntro"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="12dp"
-                    app:cornerRadius="8dp"
-                    app:strokeColor="@color/stark_gold"
-                    app:strokeWidth="1dp"
-                    android:text="TEST CALL PROXY INTRO"
+                    android:background="@drawable/bg_status_pill"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:text="BATTERY: OPTIMAL"
                     android:textColor="@color/stark_gold"
-                    android:textSize="11sp"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- BIO-FUEL PROTOCOL (4-Time Meal Alert Sentry) -->
+            <!-- 4 Permissions Quick Pills -->
             <LinearLayout
-                android:id="@+id/cardBioFuel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/tvOverlayPermissionStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_status_pill"
+                    android:gravity="center"
+                    android:paddingVertical="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="OVERLAY"
+                    android:textColor="@color/stark_text_white"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
 
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                <TextView
+                    android:id="@+id/tvMicPermissionStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_status_pill"
+                    android:gravity="center"
+                    android:paddingVertical="4dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:text="MIC"
+                    android:textColor="@color/stark_text_white"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="sans-serif-medium"
-                            android:letterSpacing="0.08"
-                            android:text="BIO-FUEL PROTOCOL (MEAL SENTRY)"
-                            android:textColor="@color/stark_cyan"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tvAccessibilityPermissionStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_status_pill"
+                    android:gravity="center"
+                    android:paddingVertical="4dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:text="AUTO-TYPE"
+                    android:textColor="@color/stark_text_white"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvBioFuelState"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="ONLINE • 4 DAILY ALERTS"
-                            android:textColor="@color/stark_gold"
-                            android:textSize="11sp" />
-                    </LinearLayout>
+                <TextView
+                    android:id="@+id/tvTelephonyPermissionStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_status_pill"
+                    android:gravity="center"
+                    android:paddingVertical="4dp"
+                    android:layout_marginStart="4dp"
+                    android:text="CALLS"
+                    android:textColor="@color/stark_text_white"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switchBioFuel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true" />
-                </LinearLayout>
+            <TextView
+                android:id="@+id/btnDisableBatteryRestrictions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:text="Tap to set 24/7 Unrestricted Battery for Deep Sleep Resilience ›"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Section Label -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:letterSpacing="0.08"
+            android:text="SENTRY PROTOCOLS &amp; INTELLIGENCE"
+            android:textColor="@color/stark_text_dim"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <!-- Bento Summary Tiles List -->
+
+        <!-- Tile 1: Bio-Fuel Sentry (Meals) -->
+        <LinearLayout
+            android:id="@+id/tileBioFuel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_bento_card_ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="Friday alerts you for meals and follow-ups. Every alert features signature chime audio and unique, non-repeating dynamic voice lines addressing you as Sir."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
+                    android:text="🍲"
+                    android:textSize="18sp" />
 
-                <!-- Meal & Follow-up Windows Row Grid -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <!-- Breakfast Row -->
-                    <LinearLayout
-                        android:id="@+id/rowBreakfastTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="🌅 Breakfast (Nashta)"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvBreakfastTime"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_status_pill"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
-                            android:text="07:00"
-                            android:textColor="@color/stark_gold"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Breakfast Check / Follow-up Row -->
-                    <LinearLayout
-                        android:id="@+id/rowBreakfastCheckTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="⏰ Breakfast Check (Follow-up)"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvBreakfastCheckTime"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_status_pill"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
-                            android:text="08:00"
-                            android:textColor="@color/stark_gold"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Lunch Row -->
-                    <LinearLayout
-                        android:id="@+id/rowLunchTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="☀️ Lunch (Dopahar ka Khana)"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvLunchTime"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_status_pill"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
-                            android:text="13:30"
-                            android:textColor="@color/stark_gold"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Evening Snacks Row -->
-                    <LinearLayout
-                        android:id="@+id/rowSnacksTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="☕ Snacks (Shaam ki Chai)"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvSnacksTime"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_status_pill"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
-                            android:text="17:30"
-                            android:textColor="@color/stark_gold"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Dinner Row -->
-                    <LinearLayout
-                        android:id="@+id/rowDinnerTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="🌙 Dinner (Raat ka Khana)"
-                            android:textColor="@color/stark_text_white"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvDinnerTime"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_status_pill"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
-                            android:text="19:30"
-                            android:textColor="@color/stark_gold"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTestBioFuelAlert"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="12dp"
-                    app:cornerRadius="8dp"
-                    app:strokeColor="@color/stark_cyan"
-                    app:strokeWidth="1dp"
-                    android:text="TEST MEAL ALERT NOW"
-                    android:textColor="@color/stark_cyan"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <!-- Personal User Context & Neural Profile Card -->
-            <LinearLayout
-                android:id="@+id/cardPersonalContext"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="24dp"
-                android:background="@drawable/bg_hud_card"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:letterSpacing="0.1"
-                        android:text="SIR'S PERSONAL CONTEXT &amp; PROFILE"
-                        android:textColor="@color/stark_gold"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_status_pill"
-                        android:paddingHorizontal="6dp"
-                        android:paddingVertical="2dp"
-                        android:text="LOCAL ONLY"
-                        android:textColor="@color/stark_cyan"
-                        android:textSize="9sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
+                        android:text="BIO-FUEL PROTOCOL"
+                        android:textColor="@color/stark_text_white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTileBioFuelStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="ONLINE • 5 SLOTS"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="10sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="🔒 Stored strictly in local private storage on this device. Never committed or pushed to GitHub! Friday injects this context to personalize conversations, quips, and sentry alerts."
-                    android:textColor="@color/stark_text_dim"
-                    android:textSize="11sp" />
-
-                <EditText
-                    android:id="@+id/etUserContext"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_input_field"
-                    android:gravity="top|start"
-                    android:hint="Example:\nName: Sharma\nRole: Android &amp; AI Engineer\nGoals: Wake up 6 AM, complete Friday app, daily gym\nRules: Remind me about coding, stop me if I waste time"
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:minLines="5"
-                    android:maxLines="10"
-                    android:padding="12dp"
-                    android:textColor="@color/stark_text_white"
-                    android:textColorHint="@color/stark_text_dim"
-                    android:textSize="13sp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:gravity="end"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnDefaultUserContext"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        android:layout_marginEnd="8dp"
-                        android:text="LOAD TEMPLATE"
-                        android:textColor="@color/stark_cyan"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnSaveUserContext"
-                        android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        app:backgroundTint="#FF6D00"
-                        app:cornerRadius="10dp"
-                        android:text="SAVE PROFILE"
-                        android:textColor="#000000"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                    android:text="›"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="22sp" />
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/tvTileBioFuelSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="07:00 Nashta • 08:00 Check • 13:30 Lunch • 17:30 Snacks • 19:30 Dinner"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="11sp" />
         </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+
+        <!-- Tile 2: AI Call Proxy -->
+        <LinearLayout
+            android:id="@+id/tileCallProxy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_bento_card_ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📞"
+                    android:textSize="18sp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
+                        android:text="AI CALL PROXY"
+                        android:textColor="@color/stark_text_white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTileCallProxyStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="ACTIVE • VOICE AGENT"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTileCallProxySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Auto-answers calls, speakerphone audio bridge, barge-in &amp; call briefing"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Tile 3: App Sentry & Doomscroll -->
+        <LinearLayout
+            android:id="@+id/tileAppSentry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_bento_card_ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🛡️"
+                    android:textSize="18sp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
+                        android:text="APP SENTRY &amp; DOOMSCROLL"
+                        android:textColor="@color/stark_text_white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTileAppSentryStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="OVERWATCH ON • 15M LIMIT"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTileAppSentrySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Auto screen inspection on app open + 15 min social media intervention"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Tile 4: Voice & Morning Protocols -->
+        <LinearLayout
+            android:id="@+id/tileVoiceMorning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_bento_card_ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎙️"
+                    android:textSize="18sp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
+                        android:text="VOICE &amp; MORNING BRIEFING"
+                        android:textColor="@color/stark_text_white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTileVoiceMorningStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="WAKE WORD ON • 5-11 AM GREET"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTileVoiceMorningSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Hotword 'Friday' detection &amp; daily unlock morning briefing"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Tile 5: Neural Core (Gemini API) -->
+        <LinearLayout
+            android:id="@+id/tileApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_bento_card_ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔑"
+                    android:textSize="18sp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
+                        android:text="NEURAL CORE (GEMINI API)"
+                        android:textColor="@color/stark_text_white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTileApiKeyStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="CONFIGURED"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTileApiKeySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Powers vision, multi-turn reasoning, and high-speed call proxying"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Tile 6: Personal Profile & Context -->
+        <LinearLayout
+            android:id="@+id/tilePersonalContext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_bento_card_ripple"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🧠"
+                    android:textSize="18sp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
+                        android:text="PERSONAL PROFILE CONTEXT"
+                        android:textColor="@color/stark_text_white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTileContextStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="LOCKED IN SECURE STORAGE"
+                        android:textColor="@color/stark_gold"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/stark_cyan"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTileContextSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Custom role, daily goals, sarcastic tone rules &amp; behavioral guidelines"
+                android:textColor="@color/stark_text_dim"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

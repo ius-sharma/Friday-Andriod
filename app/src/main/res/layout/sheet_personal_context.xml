@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_cyber_bottom_sheet"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Top Drag Handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_dot_inactive" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.08"
+        android:text="PERSONAL PROFILE &amp; CONTEXT"
+        android:textColor="@color/stark_cyan"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Teach Friday about your routines, goals, and communication preferences"
+        android:textColor="@color/stark_gold"
+        android:textSize="11sp" />
+
+    <EditText
+        android:id="@+id/etUserContextSheet"
+        android:layout_width="match_parent"
+        android:layout_height="140dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_input_field"
+        android:gravity="top|start"
+        android:hint="Tell Friday who you are, daily targets, tone preferences..."
+        android:inputType="textMultiLine"
+        android:padding="12dp"
+        android:textColor="@color/stark_text_white"
+        android:textColorHint="@color/stark_text_dim"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDefaultUserContextSheet"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            app:cornerRadius="10dp"
+            app:strokeColor="@color/stark_gold"
+            app:strokeWidth="1dp"
+            android:text="LOAD TEMPLATE"
+            android:textColor="@color/stark_gold"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveUserContextSheet"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            app:cornerRadius="10dp"
+            app:strokeColor="@color/stark_cyan"
+            app:strokeWidth="1dp"
+            android:text="SAVE PROFILE"
+            android:textColor="@color/stark_cyan"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

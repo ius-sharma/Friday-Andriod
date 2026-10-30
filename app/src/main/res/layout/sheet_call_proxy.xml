@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_cyber_bottom_sheet"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Top Drag Handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_dot_inactive" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.08"
+        android:text="AI CALL PROXY PROTOCOL"
+        android:textColor="@color/stark_cyan"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvCallProxySheetState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Status: ACTIVE • Voice Intercept &amp; Call Bridge"
+        android:textColor="@color/stark_gold"
+        android:textSize="11sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:lineSpacingExtra="3dp"
+        android:text="• Say: &quot;Friday, Rahul ko call lagao&quot; or &quot;Call 9876543210&quot; to dial.\n• When phone rings, say &quot;Friday, tum mere behalf pe baat kar lo&quot; or &quot;Call uthao&quot;.\n• Friday auto-answers, enables speakerphone, introduces herself politely, takes messages, and uses instant barge-in if interrupted.\n• Disconnecting automatically briefs you with caller summary."
+        android:textColor="@color/stark_text_dim"
+        android:textSize="11sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTelephonyPermSheet"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            app:cornerRadius="10dp"
+            app:strokeColor="@color/stark_cyan"
+            app:strokeWidth="1dp"
+            android:text="PHONE PERMISSION"
+            android:textColor="@color/stark_cyan"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTestCallProxyIntroSheet"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            app:cornerRadius="10dp"
+            app:strokeColor="@color/stark_gold"
+            app:strokeWidth="1dp"
+            android:text="TEST PROXY INTRO"
+            android:textColor="@color/stark_gold"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>
