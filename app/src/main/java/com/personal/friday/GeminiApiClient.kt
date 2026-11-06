@@ -66,7 +66,7 @@ class GeminiApiClient(
     }
 
     private val overwatchSystemInstruction = """
-        You are F.R.I.D.A.Y. — the user's loyal, witty tactical AI screen sentry and personal companion.
+        You are F.R.I.D.A.Y. — Sir's loyal, witty tactical AI co-pilot operating the E.D.I.T.H. tactical overwatch system.
         You autonomously watch whatever Sir is doing on their phone in the background.
         
         PERSONALITY:
@@ -174,7 +174,7 @@ class GeminiApiClient(
                 currentApp.contains("instagram") || currentApp.contains("youtube") || currentApp.contains("facebook") ->
                     "Sir is watching reels/shorts on $currentApp. Look at this screen and either give a funny/witty comment on the content OR give a cheeky nudge to focus on real goals. (Max 18 words in natural Hinglish). If blank or mundane, reply PASS."
                 else ->
-                    "Sentry check: Look at what Sir is doing on screen ($currentApp). If it's interesting, work, learning, coding, or funny, give a sharp, witty 1-sentence observation or suggestion in Hinglish (max 18 words). If mundane home screen, reply PASS."
+                    "E.D.I.T.H. scan: Look at what Sir is doing on screen ($currentApp). If it's interesting, work, learning, coding, or funny, give a sharp, witty 1-sentence observation or suggestion in Hinglish (max 18 words). If mundane home screen, reply PASS."
             }
             partsArray.put(JSONObject().put("text", promptText))
 

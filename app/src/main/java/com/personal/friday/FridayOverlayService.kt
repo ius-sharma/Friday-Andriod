@@ -27,6 +27,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -356,7 +357,8 @@ class FridayOverlayService : Service() {
                                     screenCaptureManager?.release()
                                     screenCaptureManager = ScreenCaptureManager(this, mediaProjection)
                                     hasScreenCapture = true
-                                    Log.i("FridayOverlayService", "ScreenCaptureManager initialized successfully! Screen Sentry ARMED.")
+                                    Log.i("FridayOverlayService", "ScreenCaptureManager initialized successfully! E.D.I.T.H. ARMED.")
+                                    showWhisper("🛰️ E.D.I.T.H. Tactical Overwatch ARMED, Sir!", 4000L)
                                     startOverwatchLoop()
                                 }
                             } catch (e: Exception) {
@@ -411,7 +413,7 @@ class FridayOverlayService : Service() {
     private fun buildNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("F.R.I.D.A.Y. Online")
-            .setContentText("Screen Sentry active • Watching your back, Sir.")
+            .setContentText("E.D.I.T.H. active • Watching your back, Sir.")
             .setSmallIcon(R.drawable.ic_friday_bubble)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -682,7 +684,7 @@ class FridayOverlayService : Service() {
                 .putBoolean("overwatch_enabled", isOverwatchEnabled)
                 .apply()
             updateCardOverwatchUI()
-            val promptMsg = if (isOverwatchEnabled) "Sentry active, Sir." else "Sentry paused, Sir."
+            val promptMsg = if (isOverwatchEnabled) "Edith active, Sir." else "Edith paused, Sir."
             ttsManager.speak(promptMsg)
         }
 
@@ -710,15 +712,15 @@ class FridayOverlayService : Service() {
 
         if (isOverwatchEnabled) {
             dotStatus?.setBackgroundResource(R.drawable.bg_dot_active)
-            tvBadge?.text = "SENTRY: ON"
+            tvBadge?.text = "E.D.I.T.H.: ON"
             tvBadge?.setTextColor(android.graphics.Color.WHITE)
-            tvHint?.text = "Auto screen sentry • Tap to pause"
+            tvHint?.text = "Tactical screen overwatch • Tap to pause"
             btnToggle?.alpha = 1.0f
         } else {
             dotStatus?.setBackgroundResource(R.drawable.bg_dot_inactive)
-            tvBadge?.text = "SENTRY: OFF"
+            tvBadge?.text = "E.D.I.T.H.: OFF"
             tvBadge?.setTextColor(android.graphics.Color.parseColor("#9E9E9E"))
-            tvHint?.text = "Sentry paused • Tap to activate"
+            tvHint?.text = "E.D.I.T.H. paused • Tap to activate"
             btnToggle?.alpha = 0.65f
         }
     }
@@ -1243,10 +1245,38 @@ class FridayOverlayService : Service() {
 
     // --- TELEPHONY & CALL PROXY SYSTEM ---
     private val callTranscript = mutableListOf<String>()
+    private var ringingAnnouncementRunnable: Runnable? = null
+    private var phoneStateReceiver: BroadcastReceiver? = null
 
     private fun setupTelephonyMonitoring() {
         val telephonyMgr = com.personal.friday.telephony.FridayTelephonyManager
         telephonyMgr.registerListener(this)
+
+        // Dynamic BroadcastReceiver for instant incoming call number capture without OEM background delay
+        if (phoneStateReceiver == null) {
+            phoneStateReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent?) {
+                    if (intent == null || intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
+                    val incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
+                    Log.i("FridayOverlayService", "Dynamic PHONE_STATE broadcast: number=$incomingNumber")
+                    if (!incomingNumber.isNullOrBlank()) {
+                        com.personal.friday.telephony.FridayTelephonyManager.updateIncomingCaller(context, incomingNumber)
+                    }
+                }
+            }
+            val filter = IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(phoneStateReceiver, filter, Context.RECEIVER_EXPORTED)
+                } else {
+                    registerReceiver(phoneStateReceiver, filter)
+                }
+                Log.i("FridayOverlayService", "Dynamic PHONE_STATE receiver registered")
+            } catch (e: Exception) {
+                Log.w("FridayOverlayService", "Failed to register dynamic PHONE_STATE receiver: ${e.message}")
+            }
+        }
+
         telephonyMgr.setCallStateListener { state, number, contactName ->
             when (state) {
                 com.personal.friday.telephony.FridayTelephonyManager.STATE_RINGING -> {
@@ -1260,18 +1290,46 @@ class FridayOverlayService : Service() {
                     Log.i("FridayOverlayService", "Incoming Call from: $displayName ($number)")
                     pulseBubbleGlow()
                     showWhisper("📞 Incoming Call: $displayName", 9000L, showCallActions = true)
-                    mainHandler.postDelayed({
+
+                    // Cancel pending runnable to prevent duplicate voice announcements
+                    ringingAnnouncementRunnable?.let { mainHandler.removeCallbacks(it) }
+
+                    ringingAnnouncementRunnable = Runnable {
                         if (telephonyMgr.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_RINGING) {
-                            val freshName = if (telephonyMgr.currentCallerName.isNotBlank() && telephonyMgr.currentCallerName != "Incoming Caller") {
+                            val candidateName = if (telephonyMgr.currentCallerName.isNotBlank() &&
+                                telephonyMgr.currentCallerName != "Incoming Caller" &&
+                                telephonyMgr.currentCallerName.any { it.isLetter() }) {
                                 telephonyMgr.currentCallerName
-                            } else displayName
-                            showWhisper("📞 Incoming Call: $freshName", 9000L, showCallActions = true)
-                            ttsManager.speak("Sir, $freshName ka call aa raha hai. Kya main aapke behalf par baat karu?")
+                            } else if (telephonyMgr.lastIncomingNumber.isNotBlank()) {
+                                telephonyMgr.resolveContactName(this, telephonyMgr.lastIncomingNumber)
+                            } else if (displayName.any { it.isLetter() } && displayName != "Incoming Caller") {
+                                displayName
+                            } else {
+                                null
+                            }
+
+                            val displayLabel = candidateName ?: telephonyMgr.lastIncomingNumber.ifBlank { displayName }
+                            showWhisper("📞 Incoming Call: $displayLabel", 9000L, showCallActions = true)
+
+                            val speechText = if (!candidateName.isNullOrBlank() && candidateName.any { it.isLetter() }) {
+                                val vocalName = candidateName
+                                    .replace(Regex("[^a-zA-Z0-9\\s\u0900-\u097F]"), " ")
+                                    .replace(Regex("\\s+"), " ")
+                                    .trim()
+                                "Sir, $vocalName ka call aa raha hai. Kya main aapke behalf par baat karu?"
+                            } else {
+                                "Sir, ek unknown call aa raha hai. Kya main aapke behalf par attend karu?"
+                            }
+
+                            ttsManager.speak(speechText)
                         }
-                    }, 450)
+                    }
+                    mainHandler.postDelayed(ringingAnnouncementRunnable!!, 800L)
                 }
                 com.personal.friday.telephony.FridayTelephonyManager.STATE_OFFHOOK -> {
                     Log.i("FridayOverlayService", "Call connected (Offhook)")
+                    ringingAnnouncementRunnable?.let { mainHandler.removeCallbacks(it) }
+                    ringingAnnouncementRunnable = null
                     if (telephonyMgr.isProxyActive) {
                         showWhisper("🟢 Call Connected • Friday Speaking on Behalf of Sir", 4000L)
                         engageSpeakerphoneWithRetries()
@@ -1279,6 +1337,8 @@ class FridayOverlayService : Service() {
                 }
                 com.personal.friday.telephony.FridayTelephonyManager.STATE_IDLE -> {
                     Log.i("FridayOverlayService", "Call disconnected (Idle)")
+                    ringingAnnouncementRunnable?.let { mainHandler.removeCallbacks(it) }
+                    ringingAnnouncementRunnable = null
                     speechManager.stopListening()
                     setMicActive(false)
                     if (telephonyMgr.isProxyActive) {
@@ -1914,6 +1974,11 @@ class FridayOverlayService : Service() {
 
         try {
             unregisterReceiver(screenStateReceiver)
+        } catch (_: Exception) {}
+
+        try {
+            phoneStateReceiver?.let { unregisterReceiver(it) }
+            phoneStateReceiver = null
         } catch (_: Exception) {}
 
         hotwordSpotter.stop()
