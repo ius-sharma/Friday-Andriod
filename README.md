@@ -27,10 +27,10 @@
 - Low power consumption running as a continuous background foreground service.
 
 ### 👁️ 2. Autonomous Screen Overwatch & Multimodal Vision
-- Integrates Android **MediaProjection API** for real-time visual screen capture.
+- **Dual-Layer Screen Overwatch**: Combines **MediaProjection API** for visual multimodal analysis with an intelligent **Accessibility Sentry Fallback** (reads active screen text and app context autonomously even when virtual display capture is disengaged).
 - Analyzes on-screen context using **Google Gemini Flash / Pro Multimodal Vision** models.
 - **Doomscroll Sentry**: Detects endless reel/short scrolling on social media apps and delivers witty, humorous nudges to keep you focused.
-- **Workflow Companion**: Offers tactical suggestions, debugging insights, or crisp summaries when learning, coding, or reading.
+- **Workflow Companion**: Offers tactical suggestions, debugging insights, or crisp summaries when learning, coding, or reading across categorized app profiles.
 - Converses naturally in expressive **Hinglish** (Hindi + English blend) with witty, sharp banter.
 
 ### 🔮 3. Stark Nanotech Particle HUD & Living Arc Reactor Bubble
