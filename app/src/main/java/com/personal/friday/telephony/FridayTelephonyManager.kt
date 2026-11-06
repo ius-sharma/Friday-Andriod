@@ -56,14 +56,28 @@ object FridayTelephonyManager {
     }
 
     fun updateIncomingCaller(context: Context, number: String, explicitName: String? = null) {
-        lastIncomingNumber = number
-        val name = if (!explicitName.isNullOrBlank()) {
-            explicitName
-        } else {
-            resolveContactName(context, number) ?: number
+        if (number.isNotBlank()) {
+            lastIncomingNumber = number
         }
-        currentCallerName = name
-        Log.i(TAG, "updateIncomingCaller: number=$number, name=$currentCallerName, state=$currentCallState")
+
+        val resolvedFromNumber = if (lastIncomingNumber.isNotBlank()) {
+            resolveContactName(context, lastIncomingNumber)
+        } else null
+
+        val finalName = if (!explicitName.isNullOrBlank() && explicitName.any { it.isLetter() }) {
+            explicitName
+        } else if (!resolvedFromNumber.isNullOrBlank()) {
+            resolvedFromNumber
+        } else if (!explicitName.isNullOrBlank()) {
+            resolveContactName(context, explicitName) ?: explicitName
+        } else if (lastIncomingNumber.isNotBlank()) {
+            lastIncomingNumber
+        } else {
+            currentCallerName
+        }
+
+        currentCallerName = finalName
+        Log.i(TAG, "updateIncomingCaller: number=$lastIncomingNumber, name=$currentCallerName, state=$currentCallState")
         if (currentCallState == STATE_RINGING) {
             mainHandler.post {
                 onCallStateChangedListener?.invoke(STATE_RINGING, lastIncomingNumber, currentCallerName)
@@ -184,24 +198,93 @@ object FridayTelephonyManager {
     }
 
     /**
-     * Resolves contact name from phone number via ContactsContract
+     * Resolves contact name from phone number via ContactsContract (Dual-Query: PhoneLookup + CommonDataKinds)
      */
     fun resolveContactName(context: Context, phoneNumber: String): String? {
+        if (phoneNumber.isBlank()) return null
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return null
         }
-        return try {
-            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber))
+        val clean = phoneNumber.trim()
+        val digits = clean.replace(Regex("[^0-9]"), "")
+
+        // 1. Primary Lookup: PhoneLookup with raw number
+        try {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(clean))
             val projection = arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME)
             context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME))
-                } else null
+                var fallback: String? = null
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME))
+                    if (!name.isNullOrBlank()) {
+                        if (name.any { it.isLetter() }) {
+                            Log.i(TAG, "resolveContactName [PhoneLookup raw lettered]: $clean -> $name")
+                            return name
+                        } else if (fallback == null) {
+                            fallback = name
+                        }
+                    }
+                }
+                if (fallback != null) return fallback
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Error looking up contact name for $phoneNumber", e)
-            null
+            Log.w(TAG, "PhoneLookup query failed for $clean: ${e.message}")
         }
+
+        // 2. Secondary Lookup: PhoneLookup with digits only (if different from clean)
+        if (digits.isNotBlank()) {
+            try {
+                val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(digits))
+                val projection = arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME)
+                context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                    var fallback: String? = null
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME))
+                        if (!name.isNullOrBlank()) {
+                            if (name.any { it.isLetter() }) {
+                                Log.i(TAG, "resolveContactName [PhoneLookup digits lettered]: $digits -> $name")
+                                return name
+                            } else if (fallback == null) {
+                                fallback = name
+                            }
+                        }
+                    }
+                    if (fallback != null) return fallback
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "PhoneLookup query failed for digits $digits: ${e.message}")
+            }
+        }
+
+        // 3. Resilient Fallback: Match last 10 digits against CommonDataKinds.Phone NUMBER or NORMALIZED_NUMBER
+        if (digits.length >= 7) {
+            val lastDigits = if (digits.length >= 10) digits.takeLast(10) else digits
+            try {
+                val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                val projection = arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val selection = "${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER} LIKE ?"
+                val selectionArgs = arrayOf("%$lastDigits%", "%$lastDigits%")
+                context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+                    var fallback: String? = null
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))
+                        if (!name.isNullOrBlank()) {
+                            if (name.any { it.isLetter() }) {
+                                Log.i(TAG, "resolveContactName [Phone LIKE lastDigits lettered]: $lastDigits -> $name")
+                                return name
+                            } else if (fallback == null) {
+                                fallback = name
+                            }
+                        }
+                    }
+                    if (fallback != null) return fallback
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "CommonDataKinds.Phone fallback query failed for $lastDigits: ${e.message}")
+            }
+        }
+
+        return null
     }
 
     /**

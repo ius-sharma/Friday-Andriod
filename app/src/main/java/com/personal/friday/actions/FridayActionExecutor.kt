@@ -101,12 +101,16 @@ object FridayActionExecutor {
         val lower = query.lowercase().trim()
 
         // 1. Proxy Mode: "tum mere behalf pe baat kar lo", "tum baat kar lo", "meri jagah tum baat karo"
+        val isRinging = com.personal.friday.telephony.FridayTelephonyManager.currentCallState == com.personal.friday.telephony.FridayTelephonyManager.STATE_RINGING
         val isProxyRequest = lower.contains("behalf") ||
                 lower.contains("tum baat kar lo") ||
                 lower.contains("tum baat karo") ||
+                lower.contains("tu baat kar") ||
+                lower.contains("tu baat kar le") ||
                 lower.contains("meri jagah tum") ||
                 lower.contains("proxy call") ||
-                lower.contains("call handle karo")
+                lower.contains("call handle karo") ||
+                (isRinging && (lower == "haan" || lower == "yes" || lower.contains("haan baat") || lower.contains("attend kar") || lower.contains("baat kar lo") || lower.contains("baat karo") || lower.contains("baat kar le")))
         if (isProxyRequest) {
             val service = com.personal.friday.FridayOverlayService.instance
             return if (service != null) {
