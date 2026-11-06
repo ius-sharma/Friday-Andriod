@@ -18,7 +18,7 @@
         <ImageView
             android:layout_width="14dp"
             android:layout_height="14dp"
-            android:contentDescription="Sentry Core"
+            android:contentDescription="EDITH Core"
             android:src="@drawable/ic_friday_bubble" />
 
         <TextView

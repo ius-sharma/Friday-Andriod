@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.08"
-        android:text="APP SENTRY &amp; DOOMSCROLL"
+        android:text="E.D.I.T.H. &amp; DOOMSCROLL"
         android:textColor="@color/stark_cyan"
         android:textSize="14sp"
         android:textStyle="bold" />
@@ -29,7 +29,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Intelligent screen context inspection &amp; social media intervention"
+        android:text="Tactical screen context inspection &amp; social media intervention"
         android:textColor="@color/stark_gold"
         android:textSize="11sp" />
 
@@ -52,7 +52,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="👁️ Auto Overwatch"
+                android:text="🛰️ E.D.I.T.H. Tactical Scan"
                 android:textColor="@color/stark_text_white"
                 android:textSize="13sp"
                 android:textStyle="bold" />

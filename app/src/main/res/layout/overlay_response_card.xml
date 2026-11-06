@@ -124,7 +124,7 @@
                 android:gravity="center_vertical"
                 android:includeFontPadding="false"
                 android:letterSpacing="0.08"
-                android:text="SENTRY: ON"
+                android:text="E.D.I.T.H.: ON"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
                 android:textStyle="bold" />

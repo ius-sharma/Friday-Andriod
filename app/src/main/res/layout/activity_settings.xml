@@ -189,7 +189,7 @@
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
             android:letterSpacing="0.08"
-            android:text="SENTRY PROTOCOLS &amp; INTELLIGENCE"
+            android:text="E.D.I.T.H. &amp; CYBERNETIC PROTOCOLS"
             android:textColor="@color/stark_text_dim"
             android:textSize="10sp"
             android:textStyle="bold" />
@@ -369,7 +369,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:letterSpacing="0.04"
-                        android:text="APP SENTRY &amp; DOOMSCROLL"
+                        android:text="E.D.I.T.H. &amp; DOOMSCROLL"
                         android:textColor="@color/stark_text_white"
                         android:textSize="13sp"
                         android:textStyle="bold" />

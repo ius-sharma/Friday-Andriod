@@ -265,9 +265,10 @@ class MainActivity : AppCompatActivity() {
                 startService(updateIntent)
             }
             updateServiceStateUI()
-            val statusMsg = if (newState) "Sentry Overwatch ACTIVE, Sir." else "Sentry Overwatch PAUSED, Sir."
+            val statusMsg = if (newState) "E.D.I.T.H. Defense Matrix ACTIVE, Sir." else "E.D.I.T.H. Standby, Sir."
+            val ttsMsg = if (newState) "Edith Defense Matrix ACTIVE, Sir." else "Edith Standby, Sir."
             Toast.makeText(this, statusMsg, Toast.LENGTH_SHORT).show()
-            if (isTtsReady) tts?.speak(statusMsg, TextToSpeech.QUEUE_FLUSH, null, "sentry_toggle")
+            if (isTtsReady) tts?.speak(ttsMsg, TextToSpeech.QUEUE_FLUSH, null, "sentry_toggle")
         }
         cardSentry.setOnLongClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -278,7 +279,7 @@ class MainActivity : AppCompatActivity() {
             if (!isAccessibilityServiceEnabled()) {
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 startActivity(intent)
-                Toast.makeText(this, "Enable F.R.I.D.A.Y. Accessibility to arm Reel Sentry", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Enable F.R.I.D.A.Y. Accessibility to arm Reel Guard", Toast.LENGTH_LONG).show()
             } else {
                 val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
                 val current = prefs.getBoolean("doomscroll_enabled", true)
@@ -436,10 +437,10 @@ class MainActivity : AppCompatActivity() {
 
         if (isServiceRunning) {
             if (hasCapture) {
-                tvCoreStatus.text = "F.R.I.D.A.Y. ONLINE • SCREEN SENTRY ARMED"
+                tvCoreStatus.text = "F.R.I.D.A.Y. ONLINE • E.D.I.T.H. ARMED"
                 tvCoreStatus.setTextColor(getColor(R.color.stark_cyan))
                 dotCoreStatus.setBackgroundResource(R.drawable.bg_dot_green)
-                tvCoreBadge.text = "ONLINE"
+                tvCoreBadge.text = "E.D.I.T.H. ONLINE"
                 tvCoreBadge.setTextColor(Color.WHITE)
 
                 tvSentryStatus.text = if (isOverwatchEnabled) "ACTIVE" else "STANDBY"
@@ -449,16 +450,16 @@ class MainActivity : AppCompatActivity() {
                 btnToggleService.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#C62828"))
                 btnToggleService.setTextColor(Color.WHITE)
             } else {
-                tvCoreStatus.text = "OVERLAY ACTIVE • TAP TO ARM SENTRY"
+                tvCoreStatus.text = "OVERLAY ACTIVE • TAP TO ARM E.D.I.T.H."
                 tvCoreStatus.setTextColor(getColor(R.color.stark_gold))
                 dotCoreStatus.setBackgroundResource(R.drawable.bg_dot_active)
-                tvCoreBadge.text = "AWAITING SENTRY"
+                tvCoreBadge.text = "AWAITING E.D.I.T.H."
                 tvCoreBadge.setTextColor(Color.WHITE)
 
                 tvSentryStatus.text = "STANDBY"
                 tvSentryStatus.setTextColor(Color.parseColor("#BDBDBD"))
 
-                btnToggleService.text = "ARM SCREEN SENTRY"
+                btnToggleService.text = "ARM E.D.I.T.H."
                 btnToggleService.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF6D00"))
                 btnToggleService.setTextColor(Color.BLACK)
             }
