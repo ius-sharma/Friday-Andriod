@@ -376,6 +376,11 @@ object FridayTelephonyManager {
      */
     fun bringInCallUiToFront(context: Context) {
         try {
+            val curr = com.personal.friday.FridayAccessibilityService.currentForegroundPackage?.lowercase() ?: ""
+            if (curr.contains("incall") || curr.contains("telecom") || curr.contains("dialer") || curr.contains("phone")) {
+                Log.d(TAG, "In-call or dialer screen already in foreground: $curr. Skipping redundant launch.")
+                return
+            }
             val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
             val dialerPkg = telecomManager?.defaultDialerPackage ?: "com.android.dialer"
             val launchIntent = context.packageManager.getLaunchIntentForPackage(dialerPkg)?.apply {

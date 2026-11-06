@@ -36,7 +36,7 @@ class SpeechManager(
                 speechRecognizer?.cancel()
             } catch (_: Exception) {}
             if (com.personal.friday.telephony.FridayTelephonyManager.isProxyActive) {
-                onError("Sir, mic lock hai. Phone Dialer se 'Auto Call Recording' off kijiye.")
+                onError("Sir, in-call audio recording ya dialer mic ko hold kar raha hai.")
             } else {
                 onError("Sir, mic audio stream busy hai. Ek baar retry kijiye.")
             }
