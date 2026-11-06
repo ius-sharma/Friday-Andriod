@@ -91,6 +91,7 @@ class FridayAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 currentForegroundPackage = pkg
                 Log.d(TAG, "Foreground app switched to: $pkg")
+                FridayOverlayService.instance?.onForegroundAppChanged(pkg)
             }
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> {
                 currentForegroundPackage = pkg
@@ -394,37 +395,56 @@ class FridayAccessibilityService : AccessibilityService() {
     }
 
     private fun isSupportedReelPackage(pkg: String): Boolean {
-        return pkg == "com.instagram.android" ||
-               pkg == "com.google.android.youtube" ||
-               pkg == "com.facebook.katana" ||
-               pkg == "com.facebook.lite" ||
-               pkg == "com.zhiliaoapp.musically" ||
-               pkg == "com.ss.android.ugc.trill" ||
-               pkg == "com.snapchat.android"
+        val lower = pkg.lowercase(Locale.ROOT)
+        return lower.contains("instagram") ||
+               lower.contains("youtube") ||
+               lower.contains("facebook.katana") ||
+               lower.contains("facebook.lite") ||
+               lower.contains("musically") ||
+               lower.contains("tiktok") ||
+               lower.contains("snapchat")
     }
 
+    private var isCurrentlyInReelsMode = false
+    private var lastReelsModeCheckTime = 0L
+
     private fun isReelContext(event: AccessibilityEvent, pkg: String): Boolean {
-        // 1. Direct event source check (fastest, zero tree search)
+        // 1. Direct event source check (fastest)
         if (isReelEventDirect(event)) {
+            isCurrentlyInReelsMode = true
             return true
         }
 
-        val root = getTargetRoot(pkg) ?: return false
+        // Cache positive reels mode check for 2000ms to avoid constant heavy traversal during fast scroll
+        val now = System.currentTimeMillis()
+        if (now - lastReelsModeCheckTime < 2000L && isCurrentlyInReelsMode) {
+            return true
+        }
+
+        val root = getTargetRoot(pkg) ?: rootInActiveWindow ?: return false
 
         // 2. High priority: Check for explicit reel/short visual elements on screen
         if (hasVisibleReelSignatures(root, 0)) {
+            isCurrentlyInReelsMode = true
+            lastReelsModeCheckTime = now
             return true
         }
 
         // 3. Tab state check
-        if (pkg == "com.instagram.android" && isInstagramReelsTabSelected(root)) {
+        if (pkg.contains("instagram") && isInstagramReelsTabSelected(root)) {
+            isCurrentlyInReelsMode = true
+            lastReelsModeCheckTime = now
             return true
         }
 
-        if (pkg == "com.google.android.youtube" && isYouTubeShortsActive(root)) {
+        if (pkg.contains("youtube") && isYouTubeShortsActive(root)) {
+            isCurrentlyInReelsMode = true
+            lastReelsModeCheckTime = now
             return true
         }
 
+        isCurrentlyInReelsMode = false
+        lastReelsModeCheckTime = now
         return false
     }
 
@@ -435,7 +455,7 @@ class FridayAccessibilityService : AccessibilityService() {
                 for (window in windowList) {
                     val root = window.root ?: continue
                     val rPkg = root.packageName?.toString() ?: ""
-                    if (rPkg == pkg) {
+                    if (rPkg.contains(pkg) || pkg.contains(rPkg)) {
                         return root
                     }
                 }
@@ -455,9 +475,9 @@ class FridayAccessibilityService : AccessibilityService() {
 
     private fun isReelEventDirect(event: AccessibilityEvent): Boolean {
         val source = event.source ?: return false
-        val resId = source.viewIdResourceName?.lowercase() ?: ""
-        val desc = source.contentDescription?.toString()?.lowercase() ?: ""
-        val text = source.text?.toString()?.lowercase() ?: ""
+        val resId = source.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
+        val desc = source.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
+        val text = source.text?.toString()?.lowercase(Locale.ROOT) ?: ""
 
         if (text == "reels" || desc == "reels" || text == "shorts" || desc == "shorts" ||
             text.contains("reels tab") || desc.contains("reels tab") ||
@@ -467,9 +487,13 @@ class FridayAccessibilityService : AccessibilityService() {
         }
         if (resId.contains("clips_view_pager") ||
             resId.contains("clips_video_container") ||
+            resId.contains("clips_action_bar") ||
+            resId.contains("clips_item") ||
+            resId.contains("feed_clips") ||
             resId.contains("reel_viewer") ||
             resId.contains("shorts_player") ||
             resId.contains("shorts_container") ||
+            resId.contains("shorts_video_player") ||
             resId.contains("reel_recycler")
         ) {
             return true
@@ -487,59 +511,64 @@ class FridayAccessibilityService : AccessibilityService() {
     }
 
     private fun hasVisibleReelSignatures(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-        if (node == null || depth > 14) return false
-        if (node.isVisibleToUser) {
-            val resId = node.viewIdResourceName?.lowercase() ?: ""
-            val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-            val text = node.text?.toString()?.lowercase() ?: ""
+        if (node == null || depth > 26) return false
 
-            // 1. Explicit Reel / Shorts keywords in text or contentDescription
-            if (text == "reels" || desc == "reels" ||
-                text == "shorts" || desc == "shorts" ||
-                text.contains("reels tab") || desc.contains("reels tab") ||
-                text.contains("shorts tab") || desc.contains("shorts tab")
-            ) {
-                return true
-            }
+        val resId = node.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
+        val desc = node.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
+        val text = node.text?.toString()?.lowercase(Locale.ROOT) ?: ""
 
-            // 2. Reel / Short unique actions
-            if (desc.contains("like this short") ||
-                desc.contains("dislike this short") ||
-                desc.contains("sound used in this short") ||
-                desc.contains("comments for this short") ||
-                desc.contains("share this short") ||
-                desc.contains("reel by") ||
-                desc.contains("like reel") ||
-                desc.contains("remix with") ||
-                desc.contains("use template") ||
-                desc.contains("watch more reels") ||
-                desc.contains("open reels audio") ||
-                desc.contains("reels viewer")
-            ) {
-                return true
-            }
-
-            // 3. Audio & Music badges in Reels
-            if (text.contains("original audio") || desc.contains("original audio") ||
-                text.contains("audio is unavailable") || desc.contains("audio is unavailable")
-            ) {
-                return true
-            }
-
-            // 4. View IDs
-            if (resId.contains("clips_video_container") ||
-                resId.contains("clips_view_pager") ||
-                resId.contains("reel_viewer") ||
-                resId.contains("shorts_container") ||
-                resId.contains("shorts_player") ||
-                resId.contains("reel_player") ||
-                resId.contains("reel_recycler")
-            ) {
-                return true
-            }
+        // 1. Explicit Reel / Shorts keywords
+        if (text == "reels" || desc == "reels" ||
+            text == "shorts" || desc == "shorts" ||
+            text.contains("reels tab") || desc.contains("reels tab") ||
+            text.contains("shorts tab") || desc.contains("shorts tab")
+        ) {
+            return true
         }
 
-        val count = node.childCount.coerceAtMost(16)
+        // 2. Reel / Short unique actions & buttons (Instagram, YouTube, Facebook, Snapchat)
+        if (desc.contains("like this short") ||
+            desc.contains("dislike this short") ||
+            desc.contains("sound used in this short") ||
+            desc.contains("comments for this short") ||
+            desc.contains("share this short") ||
+            desc.contains("remix with this short") ||
+            desc.contains("reel by") ||
+            desc.contains("like reel") ||
+            desc.contains("share reel") ||
+            desc.contains("remix this reel") ||
+            desc.contains("use template") ||
+            desc.contains("watch more reels") ||
+            desc.contains("open reels audio") ||
+            desc.contains("reels viewer") ||
+            desc.contains("double tap to play or pause") ||
+            desc.contains("tap to play or pause") ||
+            desc.contains("original audio") ||
+            text.contains("original audio") ||
+            desc.contains("audio is unavailable") ||
+            text.contains("audio is unavailable")
+        ) {
+            return true
+        }
+
+        // 3. View IDs
+        if (resId.contains("clips_video_container") ||
+            resId.contains("clips_view_pager") ||
+            resId.contains("clips_action_bar") ||
+            resId.contains("clips_item") ||
+            resId.contains("feed_clips") ||
+            resId.contains("reel_viewer") ||
+            resId.contains("shorts_container") ||
+            resId.contains("shorts_player") ||
+            resId.contains("shorts_video_player") ||
+            resId.contains("reel_player") ||
+            resId.contains("reel_recycler") ||
+            resId.contains("fb_shorts")
+        ) {
+            return true
+        }
+
+        val count = node.childCount.coerceAtMost(24)
         for (i in 0 until count) {
             val child = node.getChild(i) ?: continue
             if (hasVisibleReelSignatures(child, depth + 1)) return true
@@ -549,17 +578,15 @@ class FridayAccessibilityService : AccessibilityService() {
 
     private fun isInstagramReelsTabSelected(root: AccessibilityNodeInfo): Boolean {
         fun search(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-            if (node == null || depth > 10) return false
-            if (node.isVisibleToUser) {
-                val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-                if (node.isSelected && desc.contains("reel")) {
-                    return true
-                }
-                if (desc.contains("reels tab, selected") || desc.contains("selected, reels") || desc.contains("reels, tab")) {
-                    return true
-                }
+            if (node == null || depth > 16) return false
+            val desc = node.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
+            if (node.isSelected && desc.contains("reel")) {
+                return true
             }
-            val count = node.childCount.coerceAtMost(10)
+            if (desc.contains("reels tab, selected") || desc.contains("selected, reels") || desc.contains("reels, tab")) {
+                return true
+            }
+            val count = node.childCount.coerceAtMost(16)
             for (i in 0 until count) {
                 val child = node.getChild(i) ?: continue
                 if (search(child, depth + 1)) return true
@@ -571,21 +598,19 @@ class FridayAccessibilityService : AccessibilityService() {
 
     private fun isYouTubeShortsActive(root: AccessibilityNodeInfo): Boolean {
         fun search(node: AccessibilityNodeInfo?, depth: Int): Boolean {
-            if (node == null || depth > 10) return false
-            if (node.isVisibleToUser) {
-                val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-                val resId = node.viewIdResourceName?.lowercase() ?: ""
-                if (node.isSelected && desc.contains("short")) {
-                    return true
-                }
-                if (desc.contains("shorts tab, selected") || desc.contains("selected, shorts") || desc.contains("like this short")) {
-                    return true
-                }
-                if (resId.contains("shorts_player") || resId.contains("reel_player") || resId.contains("shorts_container")) {
-                    return true
-                }
+            if (node == null || depth > 16) return false
+            val desc = node.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
+            val resId = node.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
+            if (node.isSelected && desc.contains("short")) {
+                return true
             }
-            val count = node.childCount.coerceAtMost(10)
+            if (desc.contains("shorts tab, selected") || desc.contains("selected, shorts") || desc.contains("like this short")) {
+                return true
+            }
+            if (resId.contains("shorts_player") || resId.contains("reel_player") || resId.contains("shorts_container") || resId.contains("shorts_video_player")) {
+                return true
+            }
+            val count = node.childCount.coerceAtMost(16)
             for (i in 0 until count) {
                 val child = node.getChild(i) ?: continue
                 if (search(child, depth + 1)) return true
@@ -596,30 +621,33 @@ class FridayAccessibilityService : AccessibilityService() {
     }
 
     private fun extractReelSignature(event: AccessibilityEvent, pkg: String): String {
-        // Fast path: event text or content description
         val evtDesc = event.contentDescription?.toString()?.trim() ?: ""
-        if (evtDesc.contains("reel by", ignoreCase = true) || evtDesc.contains("like this short", ignoreCase = true)) {
+        if (evtDesc.contains("reel by", ignoreCase = true) ||
+            evtDesc.contains("like this short", ignoreCase = true) ||
+            evtDesc.contains("sound used", ignoreCase = true)
+        ) {
             return evtDesc
         }
 
-        // Secondary: Find distinct reel title/author node in target window
         val root = getTargetRoot(pkg) ?: rootInActiveWindow ?: return ""
         fun findSig(node: AccessibilityNodeInfo?, depth: Int): String {
-            if (node == null || depth > 9) return ""
-            if (node.isVisibleToUser) {
-                val desc = node.contentDescription?.toString()?.trim() ?: ""
-                if (desc.startsWith("reel by", ignoreCase = true) ||
-                    desc.contains("like this short along with", ignoreCase = true) ||
-                    desc.contains("sound used in this short", ignoreCase = true)
-                ) {
-                    return desc
-                }
-                val text = node.text?.toString()?.trim() ?: ""
-                if (text.startsWith("@") && text.length in 3..35) {
-                    return text
-                }
+            if (node == null || depth > 24) return ""
+            val desc = node.contentDescription?.toString()?.trim() ?: ""
+            if (desc.startsWith("reel by", ignoreCase = true) ||
+                desc.contains("like this short along with", ignoreCase = true) ||
+                desc.contains("sound used in this short", ignoreCase = true) ||
+                desc.contains("original audio", ignoreCase = true)
+            ) {
+                return desc
             }
-            val count = node.childCount.coerceAtMost(10)
+            val text = node.text?.toString()?.trim() ?: ""
+            if (text.startsWith("@") && text.length in 3..35) {
+                return text
+            }
+            if (text.contains("original audio", ignoreCase = true)) {
+                return text
+            }
+            val count = node.childCount.coerceAtMost(20)
             for (i in 0 until count) {
                 val child = node.getChild(i) ?: continue
                 val res = findSig(child, depth + 1)
@@ -630,6 +658,48 @@ class FridayAccessibilityService : AccessibilityService() {
         return findSig(root, 0)
     }
 
+    /**
+     * Extracts active screen content summary for Sentry AI inspection (works without MediaProjection)
+     */
+    fun extractActiveScreenSummary(): Pair<String, String> {
+        val activePkg = currentForegroundPackage ?: rootInActiveWindow?.packageName?.toString() ?: ""
+        if (activePkg.isBlank() || activePkg == packageName || activePkg.startsWith("com.personal.friday")) {
+            return Pair("", "")
+        }
+
+        val root = rootInActiveWindow ?: return Pair(activePkg, "")
+        val collectedText = mutableListOf<String>()
+
+        fun harvest(node: AccessibilityNodeInfo?, depth: Int) {
+            if (node == null || depth > 18 || collectedText.size >= 8) return
+            val text = node.text?.toString()?.trim() ?: ""
+            val desc = node.contentDescription?.toString()?.trim() ?: ""
+
+            val candidate = if (text.isNotBlank()) text else desc
+            if (candidate.length in 4..120 &&
+                !candidate.equals("Back", ignoreCase = true) &&
+                !candidate.equals("More options", ignoreCase = true) &&
+                !candidate.equals("Search", ignoreCase = true) &&
+                !candidate.equals("Home", ignoreCase = true) &&
+                !collectedText.contains(candidate)
+            ) {
+                collectedText.add(candidate)
+            }
+
+            val count = node.childCount.coerceAtMost(16)
+            for (i in 0 until count) {
+                harvest(node.getChild(i), depth + 1)
+            }
+        }
+
+        try {
+            harvest(root, 0)
+        } catch (_: Exception) {}
+
+        val summary = collectedText.joinToString(" • ")
+        return Pair(activePkg, summary)
+    }
+
     private var lastSpeakerClickTime = 0L
 
     fun clickSpeakerphoneButton(): Boolean {
@@ -638,10 +708,12 @@ class FridayAccessibilityService : AccessibilityService() {
             Log.d(TAG, "clickSpeakerphoneButton skipped (cooldown active)")
             return false
         }
-        val speakerRegex = Regex("""(?i)\b(speaker|loudspeaker|speakerphone|hands-free|audio|स्पीकर|लाउडस्पीकर)\b""")
+
+        // Dedicated speakerphone regex (STRICT: Never match generic 'audio' which collides with 'Record audio')
+        val speakerRegex = Regex("""(?i)\b(speaker|loudspeaker|speakerphone|hands-free|handsfree|स्पीकर|लाउडस्पीकर)\b""")
         val speakerIds = listOf(
-            "incall_speaker_button", "speaker", "audiobutton", "speaker_button",
-            "handsfree", "audio_button", "incall_audio_button", "call_card_speaker"
+            "bbk_incall_touch_btn_speaker", "incall_speaker_button", "speaker_button",
+            "btn_speaker", "speaker", "call_card_speaker", "handsfree"
         )
 
         val candidateRoots = mutableListOf<AccessibilityNodeInfo>()
@@ -659,6 +731,31 @@ class FridayAccessibilityService : AccessibilityService() {
             val text = node.text?.toString() ?: ""
             val desc = node.contentDescription?.toString() ?: ""
             val viewId = node.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
+            val textDescLower = "$text $desc".lowercase(Locale.ROOT)
+
+            // CRITICAL BLACKLIST: Never click Record, Mute, Hold, Video, Notes, Dialpad or End Call!
+            val isConflictingAction = textDescLower.contains("record") ||
+                    textDescLower.contains("rec") ||
+                    textDescLower.contains("mute") ||
+                    textDescLower.contains("hold") ||
+                    textDescLower.contains("video") ||
+                    textDescLower.contains("note") ||
+                    textDescLower.contains("add call") ||
+                    textDescLower.contains("merge") ||
+                    textDescLower.contains("keypad") ||
+                    textDescLower.contains("dialpad") ||
+                    textDescLower.contains("hang") ||
+                    textDescLower.contains("end call") ||
+                    viewId.contains("btn_record") ||
+                    viewId.contains("touch_btn_record") ||
+                    viewId.contains("btn_mute") ||
+                    viewId.contains("btn_hold") ||
+                    viewId.contains("btn_end")
+
+            if (isConflictingAction) {
+                // Skip this node completely; do not click recording/muting controls!
+                return false
+            }
 
             val matches = speakerRegex.containsMatchIn(text) ||
                     speakerRegex.containsMatchIn(desc) ||
@@ -667,7 +764,8 @@ class FridayAccessibilityService : AccessibilityService() {
             if (matches) {
                 val isAlreadyOn = node.isChecked || node.isSelected ||
                         desc.contains("on", ignoreCase = true) ||
-                        desc.contains("active", ignoreCase = true)
+                        desc.contains("active", ignoreCase = true) ||
+                        desc.contains("चालू", ignoreCase = true)
                 if (isAlreadyOn) {
                     Log.i(TAG, "Speakerphone is ALREADY active: text='$text', desc='$desc', id='$viewId'")
                     lastSpeakerClickTime = now

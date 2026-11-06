@@ -540,6 +540,11 @@ class FridayOverlayService : Service() {
         }
 
         whisperView?.findViewById<ImageButton>(R.id.btnDismissWhisper)?.setOnClickListener {
+            speechManager.stopListening()
+            setMicActive(false)
+            if (ttsManager.isSpeaking) {
+                ttsManager.stop()
+            }
             hideWhisper()
         }
 
@@ -1024,7 +1029,11 @@ class FridayOverlayService : Service() {
                 }
 
                 val foregroundPkg = getForegroundAppPackage()
-                val isInReelApp = foregroundPkg != null && REEL_PACKAGES.contains(foregroundPkg)
+                val isInReelApp = foregroundPkg != null && (REEL_PACKAGES.contains(foregroundPkg) ||
+                        foregroundPkg.contains("instagram") ||
+                        foregroundPkg.contains("youtube") ||
+                        foregroundPkg.contains("tiktok") ||
+                        foregroundPkg.contains("musically"))
                 val isFridayApp = foregroundPkg != null && (foregroundPkg == packageName || foregroundPkg.startsWith("com.personal.friday"))
 
                 if (isInReelApp || isFridayApp) {
@@ -1073,20 +1082,20 @@ class FridayOverlayService : Service() {
                                         withContext(Dispatchers.Main) {
                                             triggerOverwatchAlert(trimmed)
                                         }
-                                        // Set cooldown of 22 seconds between autonomous remarks
-                                        overwatchCooldownUntil = System.currentTimeMillis() + 22_000L
+                                        overwatchCooldownUntil = System.currentTimeMillis() + 35_000L
                                     } else {
-                                        // If PASS, check again in 8 seconds
-                                        overwatchCooldownUntil = System.currentTimeMillis() + 8_000L
+                                        overwatchCooldownUntil = System.currentTimeMillis() + 10_000L
                                     }
                                 }.onFailure { err ->
-                                    Log.w("FridayOverwatch", "AI Sentry scan failed: ${err.message}")
+                                    Log.w("FridayOverwatch", "Vision scan failed: ${err.message}. Falling back to Accessibility Sentry.")
+                                    checkAccessibilitySentry(foregroundPkg ?: "")
                                 }
                             }
                             bitmap.recycle()
                         }
                     } else {
-                        Log.d("FridayOverwatch", "Waiting for screenCaptureManager to arm...")
+                        // Autonomous Accessibility Sentry (works 100% of the time without MediaProjection)
+                        checkAccessibilitySentry(foregroundPkg ?: "")
                     }
                 }
 
@@ -1270,8 +1279,12 @@ class FridayOverlayService : Service() {
                 }
                 com.personal.friday.telephony.FridayTelephonyManager.STATE_IDLE -> {
                     Log.i("FridayOverlayService", "Call disconnected (Idle)")
+                    speechManager.stopListening()
+                    setMicActive(false)
                     if (telephonyMgr.isProxyActive) {
                         handleCallProxyTerminated(contactName)
+                    } else {
+                        hideWhisper()
                     }
                 }
             }
@@ -1289,16 +1302,13 @@ class FridayOverlayService : Service() {
         // 2. Accept call if ringing
         telephonyMgr.acceptCall(this)
 
-        // 3. Bring in-call dialer to front so speaker controls are visible
-        telephonyMgr.bringInCallUiToFront(this)
-
-        // 4. Force speakerphone with multi-attempt Accessibility clicks and AudioManager
+        // 3. Engage speakerphone via AudioManager and Accessibility target
         engageSpeakerphoneWithRetries()
 
         pulseBubbleGlow()
         showWhisper("🤖 Friday Proxy Active: Talking on Sir's Behalf...", 6000L)
 
-        // 5. Deliver Intro after call audio establishes
+        // 4. Deliver Intro after call audio establishes
         mainHandler.postDelayed({
             if (telephonyMgr.isProxyActive && telephonyMgr.currentCallState != com.personal.friday.telephony.FridayTelephonyManager.STATE_IDLE) {
                 engageSpeakerphoneWithRetries()
@@ -1321,19 +1331,7 @@ class FridayOverlayService : Service() {
                 telephonyMgr.setSpeakerphoneEnabled(this, true)
                 com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
             }
-        }, 400)
-        mainHandler.postDelayed({
-            if (telephonyMgr.isProxyActive) {
-                telephonyMgr.setSpeakerphoneEnabled(this, true)
-                com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
-            }
-        }, 900)
-        mainHandler.postDelayed({
-            if (telephonyMgr.isProxyActive) {
-                telephonyMgr.setSpeakerphoneEnabled(this, true)
-                com.personal.friday.FridayAccessibilityService.instance?.clickSpeakerphoneButton()
-            }
-        }, 1800)
+        }, 1200)
     }
 
     fun stopCallProxyMode() {
@@ -1676,6 +1674,233 @@ class FridayOverlayService : Service() {
             return isDiff
         } catch (e: Exception) {
             return false
+        }
+    }
+
+    // --- DUAL-ENGINE SENTRY: APPAWARE OVERWATCH SUBSYSTEM ---
+    private var lastObservedAppPkg = ""
+    private var lastAppChangeTimestamp = 0L
+    private var lastObservedScreenSummary = ""
+
+    private suspend fun checkAccessibilitySentry(pkg: String) {
+        val a11y = com.personal.friday.FridayAccessibilityService.instance ?: return
+        val (activePkg, summary) = a11y.extractActiveScreenSummary()
+        val targetPkg = if (activePkg.isNotBlank()) activePkg else pkg
+        if (targetPkg.isBlank() || isUserOnHomeScreen()) return
+
+        val combined = "$targetPkg: $summary"
+        if (combined == lastObservedScreenSummary || summary.length < 4) {
+            return
+        }
+        lastObservedScreenSummary = combined
+        Log.i("FridayOverwatch", "Accessibility Sentry triggered for: $combined")
+
+        val remark = generateAppAwareRemark(targetPkg, summary)
+        if (!remark.isNullOrBlank()) {
+            withContext(Dispatchers.Main) {
+                if (isOverwatchEnabled && !isCardVisible) {
+                    overwatchCooldownUntil = System.currentTimeMillis() + 38_000L
+                    triggerOverwatchAlert(remark)
+                }
+            }
+        }
+    }
+
+    fun onForegroundAppChanged(newPkg: String) {
+        if (!isOverwatchEnabled || isCardVisible) return
+        val lower = newPkg.lowercase(Locale.ROOT)
+        if (lower == packageName.lowercase(Locale.ROOT) || lower.startsWith("com.personal.friday")) return
+        if (lower.contains("launcher") || lower.contains("home") || lower.contains("quickstep")) return
+
+        val now = System.currentTimeMillis()
+        if (lower == lastObservedAppPkg && now - lastAppChangeTimestamp < 30_000L) {
+            return
+        }
+        lastObservedAppPkg = lower
+        lastAppChangeTimestamp = now
+
+        if (now < overwatchCooldownUntil) return
+
+        serviceScope.launch(Dispatchers.IO) {
+            delay(1200) // Brief delay to let the user settle into the app
+            if (!isOverwatchEnabled || isCardVisible) return@launch
+            val curr = com.personal.friday.FridayAccessibilityService.currentForegroundPackage?.lowercase(Locale.ROOT) ?: ""
+            if (curr != lower && !curr.contains(lower) && !lower.contains(curr)) return@launch
+
+            val (_, screenSummary) = com.personal.friday.FridayAccessibilityService.instance?.extractActiveScreenSummary() ?: Pair(lower, "")
+            val remark = generateAppAwareRemark(lower, screenSummary)
+            if (!remark.isNullOrBlank()) {
+                withContext(Dispatchers.Main) {
+                    if (isOverwatchEnabled && !isCardVisible) {
+                        overwatchCooldownUntil = System.currentTimeMillis() + 38_000L
+                        triggerOverwatchAlert(remark)
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun generateAppAwareRemark(pkg: String, screenSummary: String = ""): String? {
+        val appName = getFriendlyAppName(pkg)
+        val apiKey = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE).getString("gemini_api_key", null)
+        if (!apiKey.isNullOrBlank()) {
+            val contentDetails = if (screenSummary.isNotBlank()) " Visible on screen: '$screenSummary'." else ""
+            val prompt = "Sir is currently using $appName ($pkg).$contentDetails Give a witty, sharp, loyal 1-sentence Stark AI tactical remark or observation in natural Hinglish (max 18 words). Address him strictly as 'Sir'. If mundane or blank, reply PASS."
+            val res = geminiClient.generateQuickTextRemark(prompt)
+            if (res.isSuccess) {
+                val text = res.getOrNull()?.trim() ?: ""
+                if (text.isNotBlank() && !text.equals("PASS", ignoreCase = true) && !text.startsWith("PASS", ignoreCase = true)) {
+                    return text
+                }
+            }
+        }
+        return getLocalSituationalRemark(pkg, appName, screenSummary)
+    }
+
+    private fun getFriendlyAppName(pkg: String): String {
+        return try {
+            val appInfo = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(appInfo).toString()
+        } catch (_: Exception) {
+            pkg.substringAfterLast('.').replaceFirstChar { it.uppercase() }
+        }
+    }
+
+    private fun getLocalSituationalRemark(pkg: String, appName: String, screenSummary: String = ""): String? {
+        val lower = pkg.lowercase(Locale.ROOT)
+        val random = java.util.Random()
+        return when {
+            // Social Media & Video Feeds
+            lower.contains("instagram") -> {
+                val pool = listOf(
+                    "Sir, Instagram active hai. Quick check ya doomscroll session?",
+                    "Sir, Instagram detected. Reels me mat phasiega, goals wait kar rahe hain.",
+                    "Instagram protocol active, Sir. 10 reel ka limit yaad rakhiyega."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+            lower.contains("youtube") -> {
+                val pool = listOf(
+                    "Sir, YouTube open hai. Knowledge video ya entertainment break?",
+                    "YouTube feed active Sir. High focus mode on rakhein.",
+                    "Sir, YouTube session detected. Subroutines standing by."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+            lower.contains("twitter") || lower.contains("x.android") -> {
+                val pool = listOf(
+                    "Sir, X timeline active hai. Global updates scan kar rahe hain?",
+                    "Sir, Twitter protocol active. Signal-to-noise ratio monitor kar rahi hoon."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+            lower.contains("reddit") -> {
+                val pool = listOf(
+                    "Sir, Reddit exploration mode active. High value knowledge ya casual scroll?",
+                    "Reddit thread active Sir. Stay focused on your primary objective."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+            lower.contains("facebook") -> {
+                "Sir, Facebook feed active. Quick check karke kaam par focus rakhein."
+            }
+            lower.contains("snapchat") -> {
+                "Sir, Snapchat interface open hai. Tactical status updated."
+            }
+            lower.contains("linkedin") -> {
+                "Sir, professional networking interface active. Career growth protocol online."
+            }
+
+            // Comms & Messaging
+            lower.contains("whatsapp") -> {
+                val pool = listOf(
+                    "Sir, WhatsApp active hai. Need assistance with any drafting?",
+                    "Sir, messaging hub online. Quick reply bhejna ho toh boliye."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+            lower.contains("telegram") || lower.contains("discord") || lower.contains("slack") -> {
+                "Sir, $appName comms channel online. Message delivery systems ready."
+            }
+
+            // Web Browsing & Search
+            lower.contains("chrome") || lower.contains("browser") || lower.contains("firefox") || lower.contains("brave") -> {
+                val pool = listOf(
+                    "Sir, Chrome research session active. Systems standing by.",
+                    "Web search active Sir. Need any data breakdown?",
+                    "Sir, web exploration mode engaged. Research metrics look sharp."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+
+            // Development / Engineering
+            lower.contains("code") || lower.contains("github") || lower.contains("terminal") ||
+            lower.contains("aide") || lower.contains("termux") -> {
+                val pool = listOf(
+                    "Sir, development workstation active. Peak engineering mode engaged.",
+                    "Coding session detected Sir. All Friday subroutines at your command.",
+                    "Sir, engineering workstation online. Let's build something remarkable."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+
+            // Learning & Education
+            lower.contains("duolingo") || lower.contains("learning") || lower.contains("udemy") || lower.contains("coursera") -> {
+                val pool = listOf(
+                    "Sir, Duolingo learning session detected. Streak aur knowledge dono badhte rehne chahiye!",
+                    "Great to see learning protocol active, Sir. Cognitive metrics peak par hain."
+                )
+                pool[random.nextInt(pool.size)]
+            }
+
+            // Fitness & Health
+            lower.contains("jawline") || lower.contains("fit") || lower.contains("health") || lower.contains("workout") -> {
+                "Sir, physical optimization session active. Core stamina at maximum!"
+            }
+
+            // Creative / Photo Editing
+            lower.contains("picsart") || lower.contains("beautyplus") || lower.contains("photo") ||
+            lower.contains("camera") || lower.contains("canva") -> {
+                "Sir, creative visual design interface active. High definition visual processing engaged."
+            }
+
+            // Shopping & Food
+            lower.contains("amazon") || lower.contains("flipkart") || lower.contains("myntra") -> {
+                val pool = listOf(
+                    "Sir, shopping interface active. Stark budget protocol intact!",
+                    "Sir, purchases review kar rahe hain kya? Best value parameter check karoon?"
+                )
+                pool[random.nextInt(pool.size)]
+            }
+            lower.contains("zomato") || lower.contains("swiggy") || lower.contains("blinkit") || lower.contains("zepto") -> {
+                "Sir, meal logistics active. Bio-fuel protocol align rakhiyega!"
+            }
+
+            // Finance & Trading
+            lower.contains("zerodha") || lower.contains("groww") || lower.contains("binance") || lower.contains("angelone") -> {
+                "Sir, financial portfolio & market metrics active. Capital management protocol secure."
+            }
+
+            // System / Settings
+            lower.contains("settings") -> {
+                "Sir, device system configuration accessed. Friday core monitoring active."
+            }
+
+            // Entertainment Streaming
+            lower.contains("netflix") || lower.contains("hotstar") || lower.contains("primevideo") || lower.contains("spotify") -> {
+                "Sir, entertainment streaming active. Enjoy your tactical leisure break!"
+            }
+
+            // Reliable default fallback for any other app
+            else -> {
+                if (appName.isNotBlank() && appName.length in 2..22) {
+                    val pool = listOf(
+                        "Sir, $appName active hai. Friday systems standing by.",
+                        "Sir, $appName protocol engaged. Focus parameter high rakhein."
+                    )
+                    pool[random.nextInt(pool.size)]
+                } else null
+            }
         }
     }
 
