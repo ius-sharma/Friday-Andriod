@@ -26,10 +26,10 @@
 - Instant, offline wake-word spotting (`"Friday"`) directly on-device with zero audio transmitted to the cloud until triggered.
 - Low power consumption running as a continuous background foreground service.
 
-### 👁️ 2. Autonomous Screen Overwatch & Multimodal Vision
-- **Dual-Layer Screen Overwatch**: Combines **MediaProjection API** for visual multimodal analysis with an intelligent **Accessibility Sentry Fallback** (reads active screen text and app context autonomously even when virtual display capture is disengaged).
+### 👁️ 2. Autonomous Screen Overwatch (E.D.I.T.H. Matrix) & Multimodal Vision
+- **Dual-Layer Screen Overwatch (E.D.I.T.H.)**: Combines **MediaProjection API** for visual multimodal analysis with an intelligent **Accessibility Sentry Fallback** (reads active screen text and app context autonomously even when virtual display capture is disengaged).
 - Analyzes on-screen context using **Google Gemini Flash / Pro Multimodal Vision** models.
-- **Doomscroll Sentry**: Detects endless reel/short scrolling on social media apps and delivers witty, humorous nudges to keep you focused.
+- **Dwell-Verified Reel Sentry**: Employs a 2.2-second dwell verification timer and compound signature extraction (creator + audio) to accurately track consumed reels/shorts without false positives from quick scrolling.
 - **Workflow Companion**: Offers tactical suggestions, debugging insights, or crisp summaries when learning, coding, or reading across categorized app profiles.
 - Converses naturally in expressive **Hinglish** (Hindi + English blend) with witty, sharp banter.
 
