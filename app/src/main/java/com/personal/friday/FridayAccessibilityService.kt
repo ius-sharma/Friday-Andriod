@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -20,8 +22,27 @@ class FridayAccessibilityService : AccessibilityService() {
     private var lastExternalPackage: String? = null
     private var lastScrollEventTime = 0L
     private var lastContentChangeCheckTime = 0L
-    private var lastReelSignature = ""
     private var isReceiverRegistered = false
+
+    // Unique Reel signature & Dwell verification state (Tarika A + Tarika C)
+    private var lastConfirmedReelSignature = ""
+    private var pendingReelSignature = ""
+    private var pendingReelPkg = ""
+    private val reelDwellHandler = Handler(Looper.getMainLooper())
+    private val REEL_DWELL_TIME_MS = 2200L // 2.2s dwell time to confirm actual watch
+
+    private val confirmReelRunnable = Runnable {
+        val currentPkg = currentForegroundPackage ?: ""
+        if (pendingReelPkg.isNotBlank() && (currentPkg.contains(pendingReelPkg) || pendingReelPkg.contains(currentPkg))) {
+            if (pendingReelSignature.isNotBlank() && pendingReelSignature != lastConfirmedReelSignature) {
+                lastConfirmedReelSignature = pendingReelSignature
+                Log.i(TAG, "🎯 Dwell time verified (2.2s)! Confirmed watched Reel in $pendingReelPkg: $lastConfirmedReelSignature")
+                FridayOverlayService.instance?.onReelDetected(pendingReelPkg)
+            }
+        }
+        pendingReelSignature = ""
+        pendingReelPkg = ""
+    }
 
     private val unlockReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -91,6 +112,13 @@ class FridayAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 currentForegroundPackage = pkg
                 Log.d(TAG, "Foreground app switched to: $pkg")
+                if (!isSupportedReelPackage(pkg)) {
+                    // Left reel app: cancel any pending dwell timer and clear pending
+                    reelDwellHandler.removeCallbacks(confirmReelRunnable)
+                    pendingReelSignature = ""
+                    pendingReelPkg = ""
+                    isCurrentlyInReelsMode = false
+                }
                 FridayOverlayService.instance?.onForegroundAppChanged(pkg)
             }
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> {
@@ -113,52 +141,18 @@ class FridayAccessibilityService : AccessibilityService() {
             }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 currentForegroundPackage = pkg
-                if (isSupportedReelPackage(pkg)) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastScrollEventTime >= 1000L) {
-                        if (isReelContext(event, pkg)) {
-                            lastScrollEventTime = now
-                            val sig = extractReelSignature(event, pkg)
-                            if (sig.isNotBlank()) lastReelSignature = sig
-                            Log.i(TAG, "Confirmed vertical Reel/Short scroll in $pkg -> Counted!")
-                            FridayOverlayService.instance?.onReelDetected(pkg)
-                        } else {
-                            Log.d(TAG, "Standard feed/post scroll in $pkg (not a Reel). Ignored.")
-                        }
-                    }
-                }
+                evaluateReelDwellCandidate(event, pkg)
             }
             AccessibilityEvent.TYPE_VIEW_SELECTED -> {
                 currentForegroundPackage = pkg
-                if (isSupportedReelPackage(pkg)) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastScrollEventTime >= 1000L) {
-                        if (isReelContext(event, pkg)) {
-                            lastScrollEventTime = now
-                            val sig = extractReelSignature(event, pkg)
-                            if (sig.isNotBlank()) lastReelSignature = sig
-                            Log.i(TAG, "Confirmed ViewPager2 page snap in $pkg -> Counted!")
-                            FridayOverlayService.instance?.onReelDetected(pkg)
-                        }
-                    }
-                }
+                evaluateReelDwellCandidate(event, pkg)
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 currentForegroundPackage = pkg
-                if (isSupportedReelPackage(pkg)) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastScrollEventTime >= 1200L && now - lastContentChangeCheckTime >= 800L) {
-                        lastContentChangeCheckTime = now
-                        if (isReelContext(event, pkg)) {
-                            val sig = extractReelSignature(event, pkg)
-                            if (sig.isNotBlank() && sig != lastReelSignature) {
-                                lastReelSignature = sig
-                                lastScrollEventTime = now
-                                Log.i(TAG, "Confirmed new Reel signature in $pkg ($sig) -> Counted!")
-                                FridayOverlayService.instance?.onReelDetected(pkg)
-                            }
-                        }
-                    }
+                val now = System.currentTimeMillis()
+                if (now - lastContentChangeCheckTime >= 600L) {
+                    lastContentChangeCheckTime = now
+                    evaluateReelDwellCandidate(event, pkg)
                 }
             }
         }
@@ -473,18 +467,46 @@ class FridayAccessibilityService : AccessibilityService() {
         return null
     }
 
+    private fun evaluateReelDwellCandidate(event: AccessibilityEvent, pkg: String) {
+        if (!isSupportedReelPackage(pkg)) return
+        if (!isReelContext(event, pkg)) return
+
+        val candidateSig = extractReelSignature(event, pkg)
+        if (candidateSig.isBlank()) return
+
+        // Tarika A: Strict Unique Signature Gate
+        // If candidate signature is identical to the reel we already confirmed, user is still on the same reel!
+        if (candidateSig == lastConfirmedReelSignature) {
+            return
+        }
+
+        // If this candidate is already pending and currently timing down its 2.2s dwell, let it continue
+        if (candidateSig == pendingReelSignature) {
+            return
+        }
+
+        // Brand new candidate reel spotted!
+        // Reset dwell timer (Tarika C)
+        reelDwellHandler.removeCallbacks(confirmReelRunnable)
+        pendingReelSignature = candidateSig
+        pendingReelPkg = pkg
+        reelDwellHandler.postDelayed(confirmReelRunnable, REEL_DWELL_TIME_MS)
+        Log.d(TAG, "⏳ Candidate Reel detected ($candidateSig). Starting 2.2s dwell timer...")
+    }
+
     private fun isReelEventDirect(event: AccessibilityEvent): Boolean {
         val source = event.source ?: return false
         val resId = source.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
         val desc = source.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
         val text = source.text?.toString()?.lowercase(Locale.ROOT) ?: ""
 
-        if (text == "reels" || desc == "reels" || text == "shorts" || desc == "shorts" ||
-            text.contains("reels tab") || desc.contains("reels tab") ||
-            text.contains("shorts tab") || desc.contains("shorts tab")
-        ) {
-            return true
+        // Tarika B: Ignore bottom navigation bar tabs unless explicitly selected!
+        val isBottomNav = resId.contains("tab_bar") || resId.contains("bottom_navigation") || resId.contains("navigation_bar")
+        if (isBottomNav && !source.isSelected && !desc.contains("selected")) {
+            return false
         }
+
+        // Full screen viewer and container IDs
         if (resId.contains("clips_view_pager") ||
             resId.contains("clips_video_container") ||
             resId.contains("clips_action_bar") ||
@@ -498,15 +520,21 @@ class FridayAccessibilityService : AccessibilityService() {
         ) {
             return true
         }
-        if (desc.contains("reels") || desc.contains("shorts") || desc.contains("reel by") || desc.contains("like reel")) {
+
+        // Explicit Reel actions (exclusive to Reel players)
+        if (desc.contains("reel by") || desc.contains("like reel") ||
+            desc.contains("like this short") || desc.contains("dislike this short") ||
+            desc.contains("sound used in this short") || desc.contains("remix this reel") ||
+            desc.contains("remix with this short") || desc.contains("open reels audio")
+        ) {
             return true
         }
-        if (desc.contains("like this short") || desc.contains("dislike this short") || desc.contains("sound used in this short")) {
+
+        // Tab selected check
+        if (source.isSelected && (desc.contains("reel") || desc.contains("short") || text.contains("reel") || text.contains("short"))) {
             return true
         }
-        if (desc.contains("original audio") || text.contains("original audio")) {
-            return true
-        }
+
         return false
     }
 
@@ -517,16 +545,18 @@ class FridayAccessibilityService : AccessibilityService() {
         val desc = node.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
         val text = node.text?.toString()?.lowercase(Locale.ROOT) ?: ""
 
-        // 1. Explicit Reel / Shorts keywords
-        if (text == "reels" || desc == "reels" ||
-            text == "shorts" || desc == "shorts" ||
-            text.contains("reels tab") || desc.contains("reels tab") ||
-            text.contains("shorts tab") || desc.contains("shorts tab")
-        ) {
+        // Tarika B: Exclude unselected bottom navigation tab items (prevents feed from looking like reels)
+        val isBottomNav = resId.contains("tab_bar") || resId.contains("bottom_navigation") || resId.contains("navigation_bar")
+        if (isBottomNav && !node.isSelected && !desc.contains("selected")) {
+            return false
+        }
+
+        // 1. Selected Reel / Shorts tab
+        if (node.isSelected && (desc.contains("reel") || desc.contains("short") || text.contains("reel") || text.contains("short"))) {
             return true
         }
 
-        // 2. Reel / Short unique actions & buttons (Instagram, YouTube, Facebook, Snapchat)
+        // 2. Reel / Short unique actions & buttons (Only present in actual Reel/Short players)
         if (desc.contains("like this short") ||
             desc.contains("dislike this short") ||
             desc.contains("sound used in this short") ||
@@ -541,27 +571,14 @@ class FridayAccessibilityService : AccessibilityService() {
             desc.contains("watch more reels") ||
             desc.contains("open reels audio") ||
             desc.contains("reels viewer") ||
-            desc.contains("double tap to play or pause") ||
-            desc.contains("tap to play or pause") ||
-            desc.contains("original audio") ||
-            text.contains("original audio") ||
-            desc.contains("audio is unavailable") ||
-            text.contains("audio is unavailable")
-        ) {
-            return true
-        }
-
-        // 3. View IDs
-        if (resId.contains("clips_video_container") ||
+            resId.contains("clips_video_container") ||
             resId.contains("clips_view_pager") ||
             resId.contains("clips_action_bar") ||
             resId.contains("clips_item") ||
-            resId.contains("feed_clips") ||
             resId.contains("reel_viewer") ||
             resId.contains("shorts_container") ||
             resId.contains("shorts_player") ||
             resId.contains("shorts_video_player") ||
-            resId.contains("reel_player") ||
             resId.contains("reel_recycler") ||
             resId.contains("fb_shorts")
         ) {
@@ -630,32 +647,55 @@ class FridayAccessibilityService : AccessibilityService() {
         }
 
         val root = getTargetRoot(pkg) ?: rootInActiveWindow ?: return ""
-        fun findSig(node: AccessibilityNodeInfo?, depth: Int): String {
-            if (node == null || depth > 24) return ""
+        var creatorPart = ""
+        var audioPart = ""
+
+        fun findSig(node: AccessibilityNodeInfo?, depth: Int) {
+            if (node == null || depth > 24) return
             val desc = node.contentDescription?.toString()?.trim() ?: ""
-            if (desc.startsWith("reel by", ignoreCase = true) ||
-                desc.contains("like this short along with", ignoreCase = true) ||
-                desc.contains("sound used in this short", ignoreCase = true) ||
-                desc.contains("original audio", ignoreCase = true)
-            ) {
-                return desc
-            }
             val text = node.text?.toString()?.trim() ?: ""
-            if (text.startsWith("@") && text.length in 3..35) {
-                return text
+
+            if (creatorPart.isEmpty()) {
+                if (desc.startsWith("reel by", ignoreCase = true) ||
+                    desc.contains("like this short along with", ignoreCase = true)
+                ) {
+                    creatorPart = desc
+                } else if (text.startsWith("@") && text.length in 3..35) {
+                    creatorPart = text
+                }
             }
-            if (text.contains("original audio", ignoreCase = true)) {
-                return text
+
+            if (audioPart.isEmpty()) {
+                if (desc.contains("sound used in this short", ignoreCase = true) ||
+                    desc.contains("original audio", ignoreCase = true) ||
+                    desc.contains("open reels audio", ignoreCase = true)
+                ) {
+                    audioPart = desc
+                } else if (text.contains("original audio", ignoreCase = true)) {
+                    audioPart = text
+                }
             }
+
+            if (creatorPart.isNotEmpty() && audioPart.isNotEmpty()) return
+
             val count = node.childCount.coerceAtMost(20)
             for (i in 0 until count) {
                 val child = node.getChild(i) ?: continue
-                val res = findSig(child, depth + 1)
-                if (res.isNotEmpty()) return res
+                findSig(child, depth + 1)
+                if (creatorPart.isNotEmpty() && audioPart.isNotEmpty()) return
             }
-            return ""
         }
-        return findSig(root, 0)
+
+        try {
+            findSig(root, 0)
+        } catch (_: Exception) {}
+
+        return when {
+            creatorPart.isNotEmpty() && audioPart.isNotEmpty() -> "$creatorPart • $audioPart"
+            creatorPart.isNotEmpty() -> creatorPart
+            audioPart.isNotEmpty() -> audioPart
+            else -> ""
+        }
     }
 
     /**
@@ -836,24 +876,70 @@ class FridayAccessibilityService : AccessibilityService() {
         }
 
         event.source?.let { harvestTexts(it) }
+        if (texts.isEmpty() || texts.all { it.isBlank() }) {
+            rootInActiveWindow?.let { harvestTexts(it) }
+        }
 
         val blacklist = listOf(
             "incoming", "calling", "missed", "call", "decline", "answer",
             "swipe", "reply", "remind", "silent", "phone", "dialer", "ongoing",
-            "speaker", "mute", "bluetooth", "hold", "add", "keypad", "contact", "contacts"
+            "speaker", "mute", "bluetooth", "hold", "add", "keypad", "contact", "contacts",
+            "record", "audio", "video", "message", "sim", "airtel", "jio", "vi", "bsnl",
+            "hd", "volte", "vowifi", "roaming", "emergency"
         )
+
+        var bestNameCandidate: String? = null
+        var bestNumberCandidate: String? = null
 
         for (candidate in texts) {
             val clean = candidate.trim()
-            if (clean.length in 2..45) {
-                val lower = clean.lowercase(Locale.ROOT)
-                val isJunk = blacklist.any { lower == it || lower.startsWith("$it ") || lower.endsWith(" $it") }
-                if (!isJunk && !lower.contains("incoming call") && !lower.contains("calling...")) {
-                    Log.i(TAG, "Extracted caller name from dialer UI: '$clean'")
-                    com.personal.friday.telephony.FridayTelephonyManager.updateIncomingCaller(this, "", clean)
-                    break
+            if (clean.length < 2 || clean.length > 50) continue
+
+            val lower = clean.lowercase(Locale.ROOT)
+            val isJunk = blacklist.any {
+                lower == it ||
+                lower.startsWith("$it ") ||
+                lower.endsWith(" $it") ||
+                lower.startsWith("$it:") ||
+                lower.startsWith("$it-")
+            }
+            if (isJunk ||
+                lower.contains("incoming call") ||
+                lower.contains("calling...") ||
+                lower.contains("swipe up") ||
+                lower.contains("swipe down") ||
+                lower.contains("slide to") ||
+                lower.contains("swipe to")
+            ) {
+                continue
+            }
+
+            val digitsCount = clean.count { it.isDigit() }
+            val lettersCount = clean.count { it.isLetter() }
+
+            // If it's predominantly a phone number (e.g. "+91 99318 33722" or "99318 33722")
+            if (digitsCount >= 7 && (lettersCount == 0 || clean.startsWith("+"))) {
+                if (bestNumberCandidate == null) {
+                    bestNumberCandidate = clean
+                }
+            } else if (lettersCount >= 2 && !lower.contains("sim 1") && !lower.contains("sim 2") && !lower.contains("sim1") && !lower.contains("sim2")) {
+                // It has at least 2 letters and is not junk — This is a contact name!
+                if (bestNameCandidate == null) {
+                    bestNameCandidate = clean
                 }
             }
+        }
+
+        val numberToPass = bestNumberCandidate ?: ""
+        val nameToPass = bestNameCandidate
+
+        if (numberToPass.isNotBlank() || !nameToPass.isNullOrBlank()) {
+            Log.i(TAG, "Extracted from dialer UI: name='$nameToPass', number='$numberToPass'")
+            com.personal.friday.telephony.FridayTelephonyManager.updateIncomingCaller(
+                this,
+                numberToPass,
+                nameToPass
+            )
         }
     }
 }
