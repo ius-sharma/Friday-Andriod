@@ -92,13 +92,68 @@ class GeminiApiClient(
 
     // Multi-model resilience: verified ultra-fast multimodal models
     private val candidateModels = listOf(
-        "gemini-3.5-flash-lite",
-        "gemini-3.5-flash",
-        "gemini-3.1-flash-lite",
-        "gemini-flash-lite-latest",
-        "gemini-3-flash-preview",
-        "gemini-2.5-flash"
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro"
     )
+
+    suspend fun generateQuickTextRemark(prompt: String): Result<String> = withContext(Dispatchers.IO) {
+        val apiKey = apiKeyProvider()
+        if (apiKey.isNullOrBlank()) {
+            return@withContext Result.failure(Exception("No API Key"))
+        }
+
+        try {
+            val partsArray = JSONArray().put(JSONObject().put("text", prompt))
+            val contentObject = JSONObject().apply {
+                put("role", "user")
+                put("parts", partsArray)
+            }
+
+            val payload = JSONObject().apply {
+                put("contents", JSONArray().put(contentObject))
+                put("generationConfig", JSONObject().apply {
+                    put("temperature", 0.7)
+                    put("maxOutputTokens", 60)
+                })
+            }
+
+            val bodyJson = payload.toString()
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+
+            for (model in candidateModels) {
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val request = Request.Builder()
+                    .url(url)
+                    .post(bodyJson.toRequestBody(mediaType))
+                    .build()
+
+                try {
+                    val response = client.newCall(request).execute()
+                    val responseBody = response.body?.string() ?: ""
+
+                    if (response.isSuccessful) {
+                        val jsonResponse = JSONObject(responseBody)
+                        val candidates = jsonResponse.optJSONArray("candidates")
+                        if (candidates != null && candidates.length() > 0) {
+                            val firstCandidate = candidates.getJSONObject(0)
+                            val parts = firstCandidate.getJSONObject("content").getJSONArray("parts")
+                            val textBuilder = StringBuilder()
+                            for (i in 0 until parts.length()) {
+                                textBuilder.append(parts.getJSONObject(i).optString("text"))
+                            }
+                            val cleanResult = textBuilder.toString().trim()
+                            return@withContext Result.success(cleanResult)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+            Result.failure(Exception("Quick text remark generation failed"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun analyzeOverwatchScreen(bitmap: Bitmap, currentApp: String = ""): Result<String> = withContext(Dispatchers.IO) {
         val apiKey = apiKeyProvider()
