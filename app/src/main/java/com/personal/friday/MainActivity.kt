@@ -253,7 +253,25 @@ class MainActivity : AppCompatActivity() {
 
         // Bento Card Clicks
         cardSentry.setOnClickListener {
+            val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+            val current = prefs.getBoolean("overwatch_enabled", true)
+            val newState = !current
+            prefs.edit().putBoolean("overwatch_enabled", newState).apply()
+            if (FridayOverlayService.isRunning) {
+                val updateIntent = Intent(this, FridayOverlayService::class.java).apply {
+                    action = FridayOverlayService.ACTION_UPDATE_OVERWATCH
+                    putExtra(FridayOverlayService.EXTRA_OVERWATCH_ENABLED, newState)
+                }
+                startService(updateIntent)
+            }
+            updateServiceStateUI()
+            val statusMsg = if (newState) "Sentry Overwatch ACTIVE, Sir." else "Sentry Overwatch PAUSED, Sir."
+            Toast.makeText(this, statusMsg, Toast.LENGTH_SHORT).show()
+            if (isTtsReady) tts?.speak(statusMsg, TextToSpeech.QUEUE_FLUSH, null, "sentry_toggle")
+        }
+        cardSentry.setOnLongClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
+            true
         }
 
         cardDoomscroll.setOnClickListener {
@@ -262,8 +280,26 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
                 Toast.makeText(this, "Enable F.R.I.D.A.Y. Accessibility to arm Reel Sentry", Toast.LENGTH_LONG).show()
             } else {
-                startActivity(Intent(this, SettingsActivity::class.java))
+                val prefs = getSharedPreferences("friday_prefs", Context.MODE_PRIVATE)
+                val current = prefs.getBoolean("doomscroll_enabled", true)
+                val newState = !current
+                prefs.edit().putBoolean("doomscroll_enabled", newState).apply()
+                if (FridayOverlayService.isRunning) {
+                    val updateIntent = Intent(this, FridayOverlayService::class.java).apply {
+                        action = FridayOverlayService.ACTION_UPDATE_DOOMSCROLL
+                        putExtra(FridayOverlayService.EXTRA_DOOMSCROLL_ENABLED, newState)
+                    }
+                    startService(updateIntent)
+                }
+                updateServiceStateUI()
+                val statusMsg = if (newState) "Reel Doomscroll Guard ARMED, Sir." else "Reel Doomscroll Guard PAUSED, Sir."
+                Toast.makeText(this, statusMsg, Toast.LENGTH_SHORT).show()
+                if (isTtsReady) tts?.speak(statusMsg, TextToSpeech.QUEUE_FLUSH, null, "doomscroll_toggle")
             }
+        }
+        cardDoomscroll.setOnLongClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+            true
         }
 
         // Quick Action Chips Clicks
