@@ -28,6 +28,7 @@
 
 ### 👁️ 2. Autonomous Screen Overwatch (E.D.I.T.H. Matrix) & Multimodal Vision
 - **Dual-Layer Screen Overwatch (E.D.I.T.H.)**: Combines **MediaProjection API** for visual multimodal analysis with an intelligent **Accessibility Sentry Fallback** (reads active screen text and app context autonomously even when virtual display capture is disengaged).
+- **Intelligent Query Routing**: Differentiates between screen-inspection requests and pure conversational queries, streaming direct conversational AI responses without unnecessary screen capture latency.
 - Analyzes on-screen context using **Google Gemini Flash / Pro Multimodal Vision** models.
 - **Dwell-Verified Reel Sentry**: Employs a 2.2-second dwell verification timer and compound signature extraction (creator + audio) to accurately track consumed reels/shorts without false positives from quick scrolling.
 - **Workflow Companion**: Offers tactical suggestions, debugging insights, or crisp summaries when learning, coding, or reading across categorized app profiles.
@@ -42,6 +43,7 @@
 ### ⚡ 4. Deep Device Automation & Natural Action Engine
 - Integrated with `FridayAccessibilityService` and package manager queries.
 - **Natural Hindi/Hinglish Alarms & Timers**: Sets system alarms and timers with human phrasing (`"saadhe 7 baje ka alarm"`, `"sawa 8 baje"`, `"paune 10"`, `"15 minute ka timer"`).
+- **Instant Weather Telemetry**: Queries real-time meteorological conditions on voice command (`"weather kya hai"`, `"mausam kaisa hai"`, `"taapman kitna hai"`) with immediate local telemetry readout.
 - **Direct App & Media Actions**:
   - Open applications dynamically (`[ACTION: OPEN_APP <app>]`)
   - Direct media playback (`[ACTION: PLAY_YOUTUBE <query>]`)
