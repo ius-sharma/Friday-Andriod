@@ -201,7 +201,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="4dp"
-            android:text="Ready for orders, Sir. Tap the mic or type below to analyze your screen."
+            android:text="Ready for orders, Sir. Tap the mic or ask me anything."
             android:textColor="@color/stark_text_white"
             android:textSize="14sp" />
     </ScrollView>
@@ -232,7 +232,7 @@
             android:layout_marginHorizontal="8dp"
             android:layout_weight="1"
             android:background="@drawable/bg_input_field"
-            android:hint="Ask Friday about this screen..."
+            android:hint="Ask Friday anything or scan screen..."
             android:imeOptions="actionSend"
             android:inputType="text"
             android:paddingHorizontal="12dp"

@@ -30,6 +30,7 @@ import android.os.PowerManager
 import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -656,11 +657,27 @@ class FridayOverlayService : Service() {
         }
 
         val etInput = cardView?.findViewById<EditText>(R.id.etQuickQuestion)
-        cardView?.findViewById<ImageButton>(R.id.btnQuickSend)?.setOnClickListener {
+        val triggerSend = {
             val text = etInput?.text?.toString()?.trim() ?: ""
             if (text.isNotBlank()) {
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.hideSoftInputFromWindow(etInput?.windowToken, 0)
                 etInput?.setText("")
                 processUserQuery(text)
+            }
+        }
+
+        cardView?.findViewById<ImageButton>(R.id.btnQuickSend)?.setOnClickListener {
+            triggerSend()
+        }
+
+        etInput?.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND ||
+                (event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
+                triggerSend()
+                true
+            } else {
+                false
             }
         }
 
@@ -879,97 +896,188 @@ class FridayOverlayService : Service() {
         setMicActive(false)
         speechManager.stopListening()
 
-        // 3. Make overlays completely invisible immediately so they do NOT appear in the screenshot
-        cardView?.animate()?.cancel()
-        cardView?.visibility = View.GONE
-        whisperView?.animate()?.cancel()
-        whisperView?.visibility = View.GONE
-        bubbleView?.visibility = View.INVISIBLE
+        val isScreenQuery = isScreenAnalysisRequested(cleanQuery)
 
-        // 4. Flush any stale buffered frames from ImageReader
-        screenCaptureManager?.drainBuffer()
+        if (isScreenQuery) {
+            // === SCREEN ANALYSIS PATH ===
+            // 3. Make overlays completely invisible immediately so they do NOT appear in the screenshot
+            cardView?.animate()?.cancel()
+            cardView?.visibility = View.GONE
+            whisperView?.animate()?.cancel()
+            whisperView?.visibility = View.GONE
+            bubbleView?.visibility = View.INVISIBLE
 
-        serviceScope.launch(Dispatchers.Default) {
-            try {
-                // Wait 180ms for SurfaceFlinger to composite the clean screen without overlays or keyboard
-                delay(180)
+            // 4. Flush any stale buffered frames from ImageReader
+            screenCaptureManager?.drainBuffer()
 
-                // Capture clean bitmap of the underlying screen
-                val bitmap = screenCaptureManager?.captureScreen()
+            serviceScope.launch(Dispatchers.Default) {
+                try {
+                    // Wait 180ms for SurfaceFlinger to composite the clean screen without overlays or keyboard
+                    delay(180)
 
-                // Restore bubble
-                withContext(Dispatchers.Main) {
-                    bubbleView?.visibility = View.VISIBLE
-                    if (wasCardOpen) {
-                        showCard()
-                        val tvUserQuery = cardView?.findViewById<TextView>(R.id.tvUserQuery)
-                        val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
-                        val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
-                        tvUserQuery?.text = "Sir: \"$query\""
-                        tvResponse?.text = "Scanning display now, Sir..."
-                        progressBar?.visibility = View.VISIBLE
-                    } else {
-                        showWhisper("Scanning display, Sir...")
-                    }
-                }
+                    // Capture clean bitmap of the underlying screen
+                    val bitmap = screenCaptureManager?.captureScreen()
 
-                // Analyze the clean screen with Gemini
-                val result = geminiClient.analyzeScreen(bitmap, query)
-
-                withContext(Dispatchers.Main) {
-                    result.onSuccess { rawResponse ->
-                        var response = rawResponse.trim()
-                        val actionMatch = Regex("""^\[ACTION:\s*([A-Z_]+)\s+([^\]]+)\]""").find(response)
-                        if (actionMatch != null) {
-                            val actionType = actionMatch.groupValues[1]
-                            val actionParam = actionMatch.groupValues[2].trim()
-                            response = response.substring(actionMatch.range.last + 1).trim()
-                            when (actionType) {
-                                "OPEN_APP" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "open $actionParam")
-                                "PLAY_YOUTUBE" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "play $actionParam on youtube")
-                                "SET_ALARM" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "alarm laga do $actionParam")
-                                "SET_TIMER" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "timer laga do $actionParam")
-                            }
-                        }
-                        lastResponseText = response
+                    // Restore bubble
+                    withContext(Dispatchers.Main) {
+                        bubbleView?.visibility = View.VISIBLE
                         if (wasCardOpen) {
+                            showCard()
+                            val tvUserQuery = cardView?.findViewById<TextView>(R.id.tvUserQuery)
                             val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
                             val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
-                            progressBar?.visibility = View.GONE
-                            tvResponse?.text = response
+                            tvUserQuery?.text = "Sir: \"$cleanQuery\""
+                            tvResponse?.text = "Scanning display now, Sir..."
+                            progressBar?.visibility = View.VISIBLE
                         } else {
-                            showWhisper(response)
+                            showWhisper("Scanning display, Sir...")
                         }
-                        ttsManager.speak(response)
-                    }.onFailure { error ->
-                        val errorMsg = "Sir, error occurred: ${error.message}"
-                        if (wasCardOpen) {
-                            val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
-                            val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
-                            progressBar?.visibility = View.GONE
-                            tvResponse?.text = errorMsg
-                        } else {
-                            showWhisper(errorMsg)
-                        }
-                        ttsManager.speak("Sir, screen analyze nahi ho payi. Ek baar dubara tap kijiye.")
                     }
-                }
 
-                bitmap?.recycle()
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    bubbleView?.visibility = View.VISIBLE
-                    if (wasCardOpen) {
-                        showCard()
-                        val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
-                        val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
-                        progressBar?.visibility = View.GONE
-                        tvResponse?.text = "Sir, processing failure: ${e.message}"
-                    } else {
-                        showWhisper("Processing failure, Sir.")
+                    // Analyze the clean screen with Gemini
+                    val result = geminiClient.analyzeScreen(bitmap, cleanQuery)
+
+                    withContext(Dispatchers.Main) {
+                        handleGeminiQueryResult(result, wasCardOpen, isScreenQuery = true)
+                    }
+
+                    bitmap?.recycle()
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        handleGeminiQueryException(e, wasCardOpen, isScreenQuery = true)
                     }
                 }
             }
+        } else {
+            // === PURE TEXT / CONVERSATION PATH (NO SCREEN CAPTURE) ===
+            // Keep overlays undisturbed, zero compositor wait
+            if (wasCardOpen) {
+                val tvUserQuery = cardView?.findViewById<TextView>(R.id.tvUserQuery)
+                val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
+                val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
+                tvUserQuery?.text = "Sir: \"$cleanQuery\""
+                tvResponse?.text = "Thinking, Sir..."
+                progressBar?.visibility = View.VISIBLE
+            } else {
+                showWhisper("Thinking, Sir...")
+            }
+
+            serviceScope.launch(Dispatchers.Default) {
+                try {
+                    // Instant text query to Gemini
+                    val result = geminiClient.analyzeScreen(null, cleanQuery)
+
+                    withContext(Dispatchers.Main) {
+                        handleGeminiQueryResult(result, wasCardOpen, isScreenQuery = false)
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        handleGeminiQueryException(e, wasCardOpen, isScreenQuery = false)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isScreenAnalysisRequested(query: String): Boolean {
+        val q = query.lowercase().trim()
+        if (q.isBlank()) {
+            return true // Blank trigger defaults to scanning screen
+        }
+
+        val screenKeywords = listOf(
+            "screen", "display",
+            "ye kya hai", "yeh kya hai", "kya hai ye", "kya hai yeh",
+            "what is this", "what's this", "whats this",
+            "look at", "look here", "see this",
+            "read this", "padho", "padh ke", "padh lo", "kya likha",
+            "explain this", "ye samjhao", "yeh samjhao",
+            "translate",
+            "scan screen", "scan display", "scan karo",
+            "screen par", "screen pe", "display par", "display pe",
+            "photo me", "video me", "post me", "reel me"
+        )
+
+        if (screenKeywords.any { q.contains(it) }) {
+            return true
+        }
+
+        val visualPatterns = listOf(
+            Regex("""\bdekho\b"""),
+            Regex("""\bdekhiye\b"""),
+            Regex("""\bdekh\s*(?:ke|kar|to|toh)\b"""),
+            Regex("""\bisko\s*dekh\b""")
+        )
+
+        return visualPatterns.any { it.containsMatchIn(q) }
+    }
+
+    private fun handleGeminiQueryResult(
+        result: Result<String>,
+        wasCardOpen: Boolean,
+        isScreenQuery: Boolean
+    ) {
+        result.onSuccess { rawResponse ->
+            var response = rawResponse.trim()
+            val actionMatch = Regex("""^\[ACTION:\s*([A-Z_]+)\s+([^\]]+)\]""").find(response)
+            if (actionMatch != null) {
+                val actionType = actionMatch.groupValues[1]
+                val actionParam = actionMatch.groupValues[2].trim()
+                response = response.substring(actionMatch.range.last + 1).trim()
+                when (actionType) {
+                    "OPEN_APP" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "open $actionParam")
+                    "PLAY_YOUTUBE" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "play $actionParam on youtube")
+                    "SET_ALARM" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "alarm laga do $actionParam")
+                    "SET_TIMER" -> com.personal.friday.actions.FridayActionExecutor.tryExecuteAction(this@FridayOverlayService, "timer laga do $actionParam")
+                }
+            }
+            lastResponseText = response
+            if (wasCardOpen) {
+                val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
+                val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
+                progressBar?.visibility = View.GONE
+                tvResponse?.text = response
+            } else {
+                showWhisper(response)
+            }
+            ttsManager.speak(response)
+        }.onFailure { error ->
+            val errorMsg = "Sir, error occurred: ${error.message}"
+            if (wasCardOpen) {
+                val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
+                val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
+                progressBar?.visibility = View.GONE
+                tvResponse?.text = errorMsg
+            } else {
+                showWhisper(errorMsg)
+            }
+            if (isScreenQuery) {
+                ttsManager.speak("Sir, screen analyze nahi ho payi. Ek baar dubara tap kijiye.")
+            } else {
+                ttsManager.speak("Sir, response process nahi ho paya. Ek baar dubara try kijiye.")
+            }
+        }
+    }
+
+    private fun handleGeminiQueryException(
+        e: Exception,
+        wasCardOpen: Boolean,
+        isScreenQuery: Boolean
+    ) {
+        bubbleView?.visibility = View.VISIBLE
+        if (wasCardOpen) {
+            showCard()
+            val progressBar = cardView?.findViewById<ProgressBar>(R.id.progressBar)
+            val tvResponse = cardView?.findViewById<TextView>(R.id.tvResponseContent)
+            progressBar?.visibility = View.GONE
+            tvResponse?.text = "Sir, processing failure: ${e.message}"
+        } else {
+            showWhisper("Processing failure, Sir.")
+        }
+        if (isScreenQuery) {
+            ttsManager.speak("Sir, screen read karne me error aaya.")
+        } else {
+            ttsManager.speak("Sir, query process karne me error aaya.")
         }
     }
 
