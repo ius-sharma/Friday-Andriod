@@ -48,6 +48,24 @@ class GeminiApiClient(
            - To set a timer: `[ACTION: SET_TIMER <duration>]` (e.g. `[ACTION: SET_TIMER 5 minutes] Setting 5 minute timer, Sir.`)
     """.trimIndent()
 
+    private val textSystemInstruction = """
+        You are F.R.I.D.A.Y. — an elite, hyper-intelligent tactical AI assistant and personal conversational companion.
+        Your personality is inspired by Friday's style: witty, humorous, subtly sarcastic, fiercely loyal, brilliantly sharp, and fast.
+        
+        KEY PERSONALITY & BEHAVIOR RULES:
+        1. Always address the user with respect as 'Sir'. NEVER call the user by their raw personal name (do not say their real name out loud, always address them as 'Sir').
+        2. DO NOT mention 'Tony Stark', 'Stark Industries', Marvel, or fictional movies. The user is your real-life Sir, not a movie character.
+        3. Bring natural humor, clever banter, playful wit, and situational sarcasm in your responses when appropriate, but always remain genuinely helpful, intelligent, and concise.
+        4. Speak naturally in conversational, expressive Hinglish (Hindi + English blend, e.g. "Sir, calculation ye rahi...", "Bilkul Sir, seedhi baat ye hai...").
+        5. Keep answers structured, crisp, and direct (max 2-3 sentences for spoken audio unless Sir asks for an in-depth breakdown).
+        6. DO NOT refer to any screen, screenshot, or image unless Sir explicitly mentions one in his query. You are having a direct conversation with Sir.
+        7. DEVICE ACTIONS: If Sir asks to open an app, play music, set alarm or timer, prepend an action tag at the very start:
+           - To open an app: `[ACTION: OPEN_APP <app_name>]` (e.g. `[ACTION: OPEN_APP whatsapp] Opening WhatsApp now, Sir.`)
+           - To play a song: `[ACTION: PLAY_YOUTUBE <song_name>]` (e.g. `[ACTION: PLAY_YOUTUBE arijit singh] Playing Arijit Singh on YouTube, Sir.`)
+           - To set an alarm: `[ACTION: SET_ALARM <time>]` (e.g. `[ACTION: SET_ALARM 7:00 AM] Setting alarm for 7:00 AM, Sir.`)
+           - To set a timer: `[ACTION: SET_TIMER <duration>]` (e.g. `[ACTION: SET_TIMER 5 minutes] Setting 5 minute timer, Sir.`)
+    """.trimIndent()
+
     private fun buildEffectiveInstruction(baseInstruction: String): String {
         val userCtx = userContextProvider()?.trim()
         return if (!userCtx.isNullOrBlank()) {
@@ -260,8 +278,9 @@ class GeminiApiClient(
                 put("parts", partsArray)
             }
 
+            val chosenInstruction = if (bitmap != null) systemInstruction else textSystemInstruction
             val systemInstructionObj = JSONObject().apply {
-                put("parts", JSONArray().put(JSONObject().put("text", buildEffectiveInstruction(systemInstruction))))
+                put("parts", JSONArray().put(JSONObject().put("text", buildEffectiveInstruction(chosenInstruction))))
             }
 
             val payload = JSONObject().apply {
@@ -302,7 +321,15 @@ class GeminiApiClient(
                         }
                     } else {
                         Log.w("GeminiApiClient", "Model $model failed with code ${response.code}: $responseBody")
-                        lastError = "API Error (${response.code}) on $model"
+                        if (response.code == 400 && responseBody.contains("API_KEY_INVALID")) {
+                            return@withContext Result.failure(Exception("Gemini API Key invalid hai Sir. Please app me jaakar Google AI Studio se 'AIzaSy...' wali valid key update kijiye."))
+                        }
+                        val errorDetail = try {
+                            JSONObject(responseBody).optJSONObject("error")?.optString("message") ?: responseBody.take(120)
+                        } catch (_: Exception) {
+                            response.message.ifBlank { "HTTP ${response.code}" }
+                        }
+                        lastError = "API Error (${response.code}): $errorDetail"
                         // If overloaded (503/429), pause briefly before fallback
                         if (response.code == 503 || response.code == 429) {
                             delay(350)
@@ -314,7 +341,7 @@ class GeminiApiClient(
                 }
             }
 
-            Result.failure(Exception("Sir, servers busy hain: $lastError"))
+            Result.failure(Exception("Sir, Gemini response fail hua: $lastError"))
         } catch (e: Exception) {
             Result.failure(e)
         }
