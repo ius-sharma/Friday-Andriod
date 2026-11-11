@@ -10,6 +10,8 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
+import com.personal.friday.widget.FridayHudWidgetProvider
+import com.personal.friday.widget.FridayWeatherRepository
 import java.net.URLEncoder
 import java.util.Calendar
 import java.util.Locale
@@ -57,6 +59,12 @@ object FridayActionExecutor {
     fun tryExecuteAction(context: Context, rawQuery: String): ActionResult? {
         val q = cleanQuery(rawQuery)
 
+        // -1. Try Weather & Temperature Telemetry ("weather kya hai", "what's the weather", "mausam kaisa hai", "taapman kitna hai")
+        val weatherResult = tryExecuteWeather(context, q)
+        if (weatherResult != null) {
+            return weatherResult
+        }
+
         // Ignore if query looks like a question or information query
         if (isInformationQuery(q)) {
             return null
@@ -93,6 +101,59 @@ object FridayActionExecutor {
         }
 
         return null
+    }
+
+    // --- WEATHER & METEOROLOGICAL TELEMETRY ---
+
+    private fun tryExecuteWeather(context: Context, query: String): ActionResult? {
+        val lower = query.lowercase().trim()
+
+        // Exclude educational / explanatory queries so Gemini can explain them
+        if (lower.contains("kya hota") || lower.contains("explain") || lower.contains("meaning") || lower.contains("definition")) {
+            return null
+        }
+
+        val isWeatherQuery = lower.contains("weather") ||
+                lower.contains("mausam") ||
+                lower.contains("temperature") ||
+                lower.contains("temprature") ||
+                lower.contains("temp") ||
+                lower.contains("taapman") ||
+                lower.contains("tapman") ||
+                lower.contains("barish") ||
+                lower.contains("baarish") ||
+                lower.contains("rain") ||
+                lower.contains("climate") ||
+                lower.contains("forecast")
+
+        if (!isWeatherQuery) return null
+
+        try {
+            // Trigger fresh background sync so Open-Meteo cache stays up to date
+            FridayHudWidgetProvider.triggerAsyncWeatherRefresh(context)
+
+            val cached = FridayWeatherRepository.getCachedWeather(context)
+            val temp = Math.round(cached.tempCelsius)
+            val condition = cached.conditionText
+            val city = if (cached.cityName.isNotBlank() && cached.cityName != "Locating..." && cached.cityName != "My Location") {
+                cached.cityName
+            } else {
+                ""
+            }
+
+            val locationPart = if (city.isNotEmpty()) " $city me" else ""
+            val tts = "Sir,$locationPart abhi temperature $temp degree Celsius hai aur mausam $condition hai."
+            val whisper = "${cached.iconEmoji} $temp°C • $condition${if (city.isNotEmpty()) " • $city" else ""}"
+
+            return ActionResult(
+                success = true,
+                ttsMessage = tts,
+                whisperMessage = whisper
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error executing weather action", e)
+            return null
+        }
     }
 
     // --- TELEPHONY & CALL ACTIONS ---
