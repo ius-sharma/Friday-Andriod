@@ -108,6 +108,7 @@ class FridayOverlayService : Service() {
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
                     Log.d("FridayOverlayService", "Screen OFF: Entering True Auto-Sleep (Mic OFF, Sentry Loop Paused)")
+                    com.personal.friday.detox.FridayDetoxManager.onScreenOff(this@FridayOverlayService)
                     bubbleView?.findViewById<FridayBubbleReactorView>(R.id.bubbleReactor)?.pauseAnimationLoop()
                     try {
                         hotwordSpotter.pause()

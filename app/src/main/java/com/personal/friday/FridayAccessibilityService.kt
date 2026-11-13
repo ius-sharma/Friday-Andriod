@@ -120,6 +120,7 @@ class FridayAccessibilityService : AccessibilityService() {
                     isCurrentlyInReelsMode = false
                 }
                 FridayOverlayService.instance?.onForegroundAppChanged(pkg)
+                com.personal.friday.detox.FridayDetoxManager.onForegroundPackageChanged(this, pkg)
             }
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> {
                 currentForegroundPackage = pkg
