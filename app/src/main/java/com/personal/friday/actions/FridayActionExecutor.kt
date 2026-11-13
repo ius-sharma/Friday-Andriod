@@ -65,6 +65,12 @@ object FridayActionExecutor {
             return weatherResult
         }
 
+        // -0.5. Try Detox Protocol Controls & Status ("detox status", "detox bypass", "insta timer")
+        val detoxResult = tryExecuteDetox(context, q)
+        if (detoxResult != null) {
+            return detoxResult
+        }
+
         // Ignore if query looks like a question or information query
         if (isInformationQuery(q)) {
             return null
@@ -154,6 +160,47 @@ object FridayActionExecutor {
             Log.e(TAG, "Error executing weather action", e)
             return null
         }
+    }
+
+    // --- DETOX PROTOCOL & FOCUS CONTROLS ---
+
+    private fun tryExecuteDetox(context: Context, query: String): ActionResult? {
+        val lower = query.lowercase().trim()
+
+        // 1. Detox Bypass / Reset: "detox bypass", "emergency detox unlock", "reset detox", "detox unlock"
+        val isBypass = lower.contains("detox bypass") ||
+                lower.contains("reset detox") ||
+                lower.contains("detox reset") ||
+                lower.contains("detox unlock") ||
+                lower.contains("emergency detox")
+        if (isBypass) {
+            com.personal.friday.detox.FridayDetoxManager.resetDetoxState(context)
+            return ActionResult(
+                success = true,
+                ttsMessage = "Sir, Detox bypass ho gaya hai. Instagram unlock kar diya gaya hai.",
+                whisperMessage = "🧘 Detox Bypassed by Sir"
+            )
+        }
+
+        // 2. Detox Status / Timer Query: "detox status", "detox time", "detox kitna bacha", "insta timer", "instagram kitna chalaya"
+        val isStatus = lower.contains("detox status") ||
+                lower.contains("detox time") ||
+                lower.contains("detox timer") ||
+                lower.contains("insta timer") ||
+                lower.contains("instagram timer") ||
+                lower.contains("detox kitna") ||
+                lower.contains("insta kitna bacha") ||
+                lower.contains("instagram kitna bacha")
+        if (isStatus) {
+            val (tts, whisper) = com.personal.friday.detox.FridayDetoxManager.getDetoxStatusSpeech(context)
+            return ActionResult(
+                success = true,
+                ttsMessage = tts,
+                whisperMessage = whisper
+            )
+        }
+
+        return null
     }
 
     // --- TELEPHONY & CALL ACTIONS ---
