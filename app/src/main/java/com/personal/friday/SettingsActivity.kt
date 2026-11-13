@@ -418,6 +418,20 @@ class SettingsActivity : AppCompatActivity() {
             updateAllTileSummaries()
         }
 
+        val switchDetox = sheetView.findViewById<SwitchMaterial>(R.id.switchDetoxSheet)
+        val tvDetoxState = sheetView.findViewById<TextView>(R.id.tvDetoxSheetState)
+        val isDetoxEnabled = prefs.getBoolean("detox_enabled", true)
+        switchDetox.isChecked = isDetoxEnabled
+        tvDetoxState.text = if (isDetoxEnabled) "Status: ACTIVE • 10m Instagram Quota (5h cooldown)" else "Status: DISABLED (Paused)"
+        tvDetoxState.setTextColor(if (isDetoxEnabled) getColor(R.color.stark_cyan) else getColor(R.color.stark_text_dim))
+
+        switchDetox.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("detox_enabled", isChecked).apply()
+            tvDetoxState.text = if (isChecked) "Status: ACTIVE • 10m Instagram Quota (5h cooldown)" else "Status: DISABLED (Paused)"
+            tvDetoxState.setTextColor(if (isChecked) getColor(R.color.stark_cyan) else getColor(R.color.stark_text_dim))
+            com.personal.friday.detox.FridayDetoxManager.setDetoxEnabled(this, isChecked)
+        }
+
         tvUsageAccessPrompt.setOnClickListener {
             if (!hasUsageStatsPermission()) {
                 val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
