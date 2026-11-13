@@ -31,6 +31,7 @@
 - **Intelligent Query Routing**: Differentiates between screen-inspection requests and pure conversational queries, streaming direct conversational AI responses without unnecessary screen capture latency.
 - Analyzes on-screen context using **Google Gemini Flash / Pro Multimodal Vision** models.
 - **Dwell-Verified Reel Sentry**: Employs a 2.2-second dwell verification timer and compound signature extraction (creator + audio) to accurately track consumed reels/shorts without false positives from quick scrolling.
+- **Stark Detox Protocol**: Focus quota enforcement on high-distraction social apps (10-minute limit, 9-minute whisper alert, 5-hour lockout with home kickout, and voice status/bypass commands).
 - **Workflow Companion**: Offers tactical suggestions, debugging insights, or crisp summaries when learning, coding, or reading across categorized app profiles.
 - Converses naturally in expressive **Hinglish** (Hindi + English blend) with witty, sharp banter.
 
